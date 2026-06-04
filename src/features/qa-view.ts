@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer, MarkdownView } from "obsidian";
+import { App, ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, MarkdownRenderer, MarkdownView, FuzzySuggestModal } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
 import { assembleContext, NoteDoc } from "../core/context.ts";
 import { buildQaMessages, QaTurn } from "../core/qa-prompt.ts";
@@ -8,6 +8,24 @@ import { buildEditMessages } from "../core/edit-prompt.ts";
 export const QA_VIEW_TYPE = "vault-brain-qa";
 
 type Mode = "note" | "vault" | "edit";
+
+class ContextSuggest extends FuzzySuggestModal<TAbstractFile> {
+  constructor(app: App, private onPick: (f: TAbstractFile) => void) {
+    super(app);
+    this.setPlaceholder("Add a note or folder as context…");
+  }
+  getItems(): TAbstractFile[] {
+    return this.app.vault
+      .getAllLoadedFiles()
+      .filter((f) => (f instanceof TFile && f.extension === "md") || f instanceof TFolder);
+  }
+  getItemText(f: TAbstractFile): string {
+    return f.path;
+  }
+  onChooseItem(f: TAbstractFile): void {
+    this.onPick(f);
+  }
+}
 
 export class VaultBrainQaView extends ItemView {
   private messagesEl!: HTMLElement;
@@ -19,6 +37,8 @@ export class VaultBrainQaView extends ItemView {
   private currentPath: string | null = null;
   private abort: AbortController | null = null;
   private mode: Mode = "note";
+  private manualContext: TFile[] = [];
+  private contextEl!: HTMLElement;
 
   constructor(leaf: WorkspaceLeaf, private plugin: VaultBrainPlugin) {
     super(leaf);
@@ -49,6 +69,9 @@ export class VaultBrainQaView extends ItemView {
       this.mode = modeSelect.value as Mode;
       this.renderModeInfo();
     };
+    const ctxBtn = header.createEl("button", { cls: "vault-brain-qa-ctxbtn", text: "+ Context" });
+    ctxBtn.onclick = () => this.openContextPicker();
+    this.contextEl = root.createDiv({ cls: "vault-brain-qa-chips" });
 
     this.chipEl = root.createDiv({ cls: "vault-brain-qa-chip" });
     this.chipEl.hide();
@@ -83,6 +106,7 @@ export class VaultBrainQaView extends ItemView {
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.syncToActiveFile()));
     this.currentPath = this.app.workspace.getActiveFile()?.path ?? null;
     this.renderModeInfo();
+    this.renderContextChips();
   }
 
   async onClose(): Promise<void> {
@@ -105,6 +129,36 @@ export class VaultBrainQaView extends ItemView {
       const file = this.app.workspace.getActiveFile();
       this.renderInfo(file ? `Context: ${file.basename} + linked notes` : "Open a note to ask about it.");
     }
+  }
+
+  private renderContextChips(): void {
+    this.contextEl.empty();
+    for (const f of this.manualContext) {
+      const chip = this.contextEl.createDiv({ cls: "vault-brain-qa-chip2" });
+      chip.createSpan({ text: f.basename });
+      const x = chip.createSpan({ cls: "vault-brain-qa-chipx", text: "×" });
+      x.onclick = () => {
+        this.manualContext = this.manualContext.filter((m) => m.path !== f.path);
+        this.renderContextChips();
+      };
+    }
+  }
+
+  private openContextPicker(): void {
+    new ContextSuggest(this.app, (picked) => {
+      const files: TFile[] = [];
+      if (picked instanceof TFile && picked.extension === "md") {
+        files.push(picked);
+      } else if (picked instanceof TFolder) {
+        for (const f of this.app.vault.getMarkdownFiles()) {
+          if (f.path.startsWith(picked.path + "/")) files.push(f);
+        }
+      }
+      for (const f of files) {
+        if (!this.manualContext.some((m) => m.path === f.path)) this.manualContext.push(f);
+      }
+      this.renderContextChips();
+    }).open();
   }
 
   // Reset when the active note changes — only in "this note" mode.
@@ -167,7 +221,12 @@ export class VaultBrainQaView extends ItemView {
     } else {
       const file = this.app.workspace.getActiveFile() as TFile;
       const { active, linked } = await this.gatherNotes(file);
-      const ctx = assembleContext(active, linked, cap);
+      const extra: NoteDoc[] = [];
+      for (const f of this.manualContext) {
+        if (f.path === file.path) continue;
+        extra.push({ title: f.basename, body: await this.app.vault.cachedRead(f) });
+      }
+      const ctx = assembleContext(active, [...linked, ...extra], cap);
       contextText = ctx.text;
       truncated = ctx.truncated;
     }
