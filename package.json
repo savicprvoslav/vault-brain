@@ -1,0 +1,20 @@
+{
+  "name": "vault-brain",
+  "version": "0.1.0",
+  "description": "Fully-local multimodal AI for Obsidian via Gemma 4 on Ollama.",
+  "type": "module",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
+    "test": "node --import tsx --test tests/*.test.ts"
+  },
+  "author": "Prvoslav",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "esbuild": "0.21.5",
+    "obsidian": "1.5.7-1",
+    "tsx": "^4.16.0",
+    "typescript": "5.4.5"
+  }
+}
