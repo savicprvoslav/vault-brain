@@ -53,3 +53,28 @@
 .vault-brain-qa-mode {
   width: 100%;
 }
+
+.vault-brain-rec-bar {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+.vault-brain-rec-timer {
+  font-variant-numeric: tabular-nums;
+  min-width: 44px;
+  text-align: center;
+}
+.vault-brain-rec-bar button {
+  cursor: pointer;
+  padding: 2px 10px;
+}

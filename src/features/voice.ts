@@ -1,4 +1,4 @@
-import { Notice, TFile, TAbstractFile, moment, Menu } from "obsidian";
+import { Notice, TFile, TAbstractFile, moment, Menu, MarkdownView } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
 import { encodeWavPcm16 } from "../core/wav.ts";
 import { buildVoiceMessages } from "../core/voice-prompt.ts";
@@ -62,6 +62,17 @@ function bytesToBase64(bytes: Uint8Array): string {
   return Buffer.from(bytes).toString("base64");
 }
 
+async function openAndReveal(plugin: VaultBrainPlugin, file: TFile): Promise<void> {
+  const leaf = plugin.app.workspace.getLeaf(false);
+  await leaf.openFile(file);
+  const view = leaf.view;
+  if (view instanceof MarkdownView) {
+    const last = Math.max(0, view.editor.lineCount() - 1);
+    view.editor.setCursor({ line: last, ch: 0 });
+    view.editor.scrollIntoView({ from: { line: last, ch: 0 }, to: { line: last, ch: 0 } }, true);
+  }
+}
+
 async function resolveDailyNote(plugin: VaultBrainPlugin): Promise<TFile> {
   const dn = (plugin.app as any).internalPlugins?.getPluginById?.("daily-notes");
   const opts = dn?.instance?.options ?? {};
@@ -92,18 +103,19 @@ export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBu
       tasks: sections.tasks,
       transcript: sections.transcript,
     });
+    let target: TFile;
     if (plugin.settings.dailyNoteMode === "new") {
       const path = `${title} (memo).md`;
       const existing = plugin.app.vault.getAbstractFileByPath(path);
-      const target = existing instanceof TFile ? existing : await plugin.app.vault.create(path, "");
+      target = existing instanceof TFile ? existing : await plugin.app.vault.create(path, "");
       await plugin.app.vault.append(target, `${filled}\n`);
-      await plugin.app.workspace.getLeaf(true).openFile(target);
     } else {
-      const daily = await resolveDailyNote(plugin);
-      await plugin.app.vault.append(daily, `\n${filled}\n`);
+      target = await resolveDailyNote(plugin);
+      await plugin.app.vault.append(target, `\n${filled}\n`);
     }
+    await openAndReveal(plugin, target);
     notice.hide();
-    new Notice("Vault Brain: voice memo added.");
+    new Notice(`Vault Brain: memo added to "${target.basename}" ✓`);
   } catch (e) {
     notice.hide();
     new Notice("Vault Brain error: " + (e as Error).message);
