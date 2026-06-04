@@ -45,3 +45,11 @@
   gap: 6px;
   padding: 6px 8px;
 }
+
+.vault-brain-qa-header {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.vault-brain-qa-mode {
+  width: 100%;
+}
