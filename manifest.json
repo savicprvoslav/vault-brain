@@ -3,7 +3,8 @@
   "name": "Vault Brain",
   "version": "0.1.0",
   "minAppVersion": "1.5.0",
-  "description": "Fully-local, multimodal AI for your vault (voice, vision, Q&A) via Gemma 4 on Ollama. No cloud calls.",
-  "author": "Prvoslav",
+  "description": "Fully-local, multimodal AI: voice memos, image OCR, whole-vault semantic chat, and AI writing — powered by Gemma 4 on Ollama. Nothing leaves your machine.",
+  "author": "Prvoslav Savić",
+  "authorUrl": "https://github.com/savicprvoslav",
   "isDesktopOnly": true
 }
