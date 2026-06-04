@@ -17,13 +17,45 @@
   padding: 8px;
 }
 .vault-brain-qa-msg {
-  margin-bottom: 10px;
+  margin-bottom: 14px;
+}
+.vault-brain-qa-user {
+  display: flex;
+  justify-content: flex-end;
 }
 .vault-brain-qa-user .vault-brain-qa-body {
-  font-weight: 600;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  padding: 8px 12px;
+  border-radius: 14px 14px 4px 14px;
+  max-width: 85%;
+  white-space: pre-wrap;
+}
+.vault-brain-qa-assistant {
+  position: relative;
 }
 .vault-brain-qa-assistant .vault-brain-qa-body {
-  white-space: pre-wrap;
+  background: var(--background-secondary);
+  padding: 2px 12px;
+  border-radius: 14px 14px 14px 4px;
+}
+.vault-brain-qa-assistant .vault-brain-qa-body > :first-child {
+  margin-top: 0.4em;
+}
+.vault-brain-qa-assistant .vault-brain-qa-body > :last-child {
+  margin-bottom: 0.4em;
+}
+.vault-brain-qa-copy {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 11px;
+  padding: 1px 6px;
+  opacity: 0;
+  cursor: pointer;
+}
+.vault-brain-qa-assistant:hover .vault-brain-qa-copy {
+  opacity: 0.7;
 }
 .vault-brain-qa-info {
   color: var(--text-muted);

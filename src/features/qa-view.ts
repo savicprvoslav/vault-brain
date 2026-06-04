@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
 import { assembleContext, NoteDoc } from "../core/context.ts";
 import { buildQaMessages, QaTurn } from "../core/qa-prompt.ts";
@@ -51,6 +51,14 @@ export class VaultBrainQaView extends ItemView {
     this.chipEl = root.createDiv({ cls: "vault-brain-qa-chip" });
     this.chipEl.hide();
     this.messagesEl = root.createDiv({ cls: "vault-brain-qa-messages" });
+    this.messagesEl.addEventListener("click", (e) => {
+      const link = (e.target as HTMLElement).closest("a.internal-link") as HTMLElement | null;
+      if (link) {
+        e.preventDefault();
+        const href = link.getAttribute("data-href") ?? link.getAttribute("href") ?? "";
+        if (href) void this.app.workspace.openLinkText(href, "", false);
+      }
+    });
 
     const inputRow = root.createDiv({ cls: "vault-brain-qa-input" });
     this.inputEl = inputRow.createEl("textarea", {
@@ -180,8 +188,11 @@ export class VaultBrainQaView extends ItemView {
       let finalText = answer;
       if (this.mode === "vault" && sources.length > 0) {
         finalText = `${answer}\n\nSources: ${sources.map((s) => `[[${s}]]`).join(", ")}`;
-        bubble.setText(finalText);
       }
+      bubble.empty();
+      const sourcePath = this.app.workspace.getActiveFile()?.path ?? "";
+      await MarkdownRenderer.render(this.app, finalText, bubble, sourcePath, this);
+      this.addCopyButton(bubble, finalText);
       this.history.push({ role: "user", text: question }, { role: "assistant", text: finalText });
     } catch (e) {
       const err = e as Error;
@@ -201,6 +212,17 @@ export class VaultBrainQaView extends ItemView {
     const body = wrap.createDiv({ cls: "vault-brain-qa-body", text });
     this.scrollToBottom();
     return body;
+  }
+
+  private addCopyButton(bubble: HTMLElement, text: string): void {
+    const wrap = bubble.parentElement;
+    if (!wrap) return;
+    const btn = wrap.createEl("button", { cls: "vault-brain-qa-copy", text: "Copy" });
+    btn.onclick = async () => {
+      await navigator.clipboard.writeText(text);
+      btn.setText("Copied");
+      window.setTimeout(() => btn.setText("Copy"), 1500);
+    };
   }
 
   private setStreaming(on: boolean): void {
