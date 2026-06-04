@@ -11,3 +11,12 @@ test("does not double-link an already-linked title", () => {
 test("ignores very short titles", () => {
   assert.equal(linkMentions("a b c", ["a"]), "a b c");
 });
+test("links a plain mention even when an unrelated link precedes it", () => {
+  assert.equal(linkMentions("[[Other]] then Project Plan.", ["Project Plan"]), "[[Other]] then [[Project Plan]].");
+});
+test("prefers the longer title when both match", () => {
+  assert.equal(linkMentions("Project Plan here", ["Plan", "Project Plan"]), "[[Project Plan]] here");
+});
+test("links titles containing special characters", () => {
+  assert.equal(linkMentions("I use C++ daily", ["C++"]), "I use [[C++]] daily");
+});

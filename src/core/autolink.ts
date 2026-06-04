@@ -5,7 +5,7 @@ export function linkMentions(text: string, titles: string[]): string {
   let result = text;
   for (const title of sorted) {
     const esc = title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const re = new RegExp(`(?<!\\[\\[)\\b${esc}\\b(?!\\]\\]|\\|)`, "i");
+    const re = new RegExp(`(?<![\\p{L}\\p{N}])(?<!\\[\\[)${esc}(?![\\p{L}\\p{N}])(?!\\]\\]|\\|)`, "iu");
     const m = re.exec(result);
     if (!m) continue;
     const before = result.slice(0, m.index);
