@@ -18,3 +18,12 @@ export function topK<T>(query: number[], items: { vector: number[]; value: T }[]
     .sort((a, b) => b.score - a.score)
     .slice(0, Math.max(0, k));
 }
+
+export function averageVectors(vectors: number[][]): number[] {
+  if (vectors.length === 0) return [];
+  const dim = vectors[0].length;
+  const out = new Array<number>(dim).fill(0);
+  for (const v of vectors) for (let i = 0; i < dim; i++) out[i] += v[i] ?? 0;
+  for (let i = 0; i < dim; i++) out[i] /= vectors.length;
+  return out;
+}

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { cosine, topK } from "../src/core/similarity.ts";
+import { cosine, topK, averageVectors } from "../src/core/similarity.ts";
 
 test("cosine: identical=1, orthogonal=0, opposite=-1", () => {
   assert.equal(cosine([1, 0], [1, 0]), 1);
@@ -18,4 +18,8 @@ test("topK returns k highest by score, sorted", () => {
   assert.equal(r.length, 2);
   assert.equal(r[0].value, "a");
   assert.equal(r[1].value, "c");
+});
+test("averageVectors averages componentwise", () => {
+  assert.deepEqual(averageVectors([[2, 0], [0, 2]]), [1, 1]);
+  assert.deepEqual(averageVectors([]), []);
 });
