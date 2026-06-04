@@ -901,7 +901,7 @@ git commit -m "test: add live Ollama contract test (skips when offline)"
 - `npm test` green (10 unit tests + 2 contract tests when Ollama is up).
 - `npm run build` produces `main.js` with no type errors.
 - In Obsidian: 🟢 status, working Test-connection stream, settings tab, and correct 🔴/🟡 states.
-- All network I/O confined to `src/core/ollama-provider.ts` (grep check: `grep -rn "fetch(" src/` returns only that file).
+- All network I/O confined to `src/core/ollama-provider.ts` (grep check: `grep -rln fetch src/` returns only that file; note the client calls `this.fetchFn`, so match `fetch`, not `fetch(`).
 
 ---
 
