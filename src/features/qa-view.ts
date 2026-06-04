@@ -4,6 +4,7 @@ import { assembleContext, NoteDoc } from "../core/context.ts";
 import { buildQaMessages, QaTurn } from "../core/qa-prompt.ts";
 import { assembleRagContext } from "../core/rag-context.ts";
 import { buildEditMessages } from "../core/edit-prompt.ts";
+import { lineDiff } from "../core/diff.ts";
 
 export const QA_VIEW_TYPE = "vault-brain-qa";
 
@@ -301,7 +302,12 @@ export class VaultBrainQaView extends ItemView {
       const finalRevised = revised.trim();
       bubble.empty();
       bubble.createDiv({ cls: "vault-brain-qa-editlabel", text: `Proposed edit of "${file.basename}" — review, then apply:` });
-      bubble.createEl("pre", { cls: "vault-brain-qa-editpreview", text: finalRevised });
+      const diffEl = bubble.createDiv({ cls: "vault-brain-qa-diff" });
+      for (const line of lineDiff(content, finalRevised)) {
+        const cls = line.type === "add" ? "vbd-add" : line.type === "del" ? "vbd-del" : "vbd-same";
+        const prefix = line.type === "add" ? "+ " : line.type === "del" ? "- " : "  ";
+        diffEl.createDiv({ cls: `vbd-line ${cls}`, text: prefix + line.text });
+      }
       const applyBtn = bubble.createEl("button", { cls: "vault-brain-qa-apply", text: "Apply to note" });
       applyBtn.onclick = async () => {
         const leaf = this.app.workspace.getLeaf(false);
