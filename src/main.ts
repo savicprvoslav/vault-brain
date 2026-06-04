@@ -1,4 +1,4 @@
-import { Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { Menu, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { normalizeSettings, VaultBrainSettings } from "./core/settings-model.ts";
 import { VaultBrainSettingTab } from "./settings.ts";
 import { OllamaProvider } from "./core/ollama-provider.ts";
@@ -10,11 +10,13 @@ import { registerVoiceCommands } from "./features/voice.ts";
 import { registerRecorder } from "./features/recorder.ts";
 import { registerQuickActions } from "./features/actions.ts";
 import { VaultIndex } from "./features/vault-index.ts";
+import { Activity, renderActivity } from "./core/activity.ts";
 
 export default class VaultBrainPlugin extends Plugin {
   settings!: VaultBrainSettings;
   provider!: OllamaProvider;
   vaultIndex!: VaultIndex;
+  activity = new Activity();
   private statusEl!: HTMLElement;
   private statusView: StatusView | null = null;
 
@@ -82,6 +84,30 @@ export default class VaultBrainPlugin extends Plugin {
           new Notice("Vault Brain error: " + (e as Error).message);
         }
       },
+    });
+
+    const activityEl = this.addStatusBarItem();
+    const updateActivity = () => {
+      const v = renderActivity(this.activity.runningCount(), this.activity.current()?.label ?? null);
+      activityEl.setText(v.text);
+      activityEl.ariaLabel = v.tooltip;
+      activityEl.title = v.tooltip;
+    };
+    this.activity.onChange(updateActivity);
+    updateActivity();
+    activityEl.style.cursor = "pointer";
+    activityEl.addEventListener("click", (e) => {
+      const menu = new Menu();
+      const recent = this.activity.recent();
+      if (recent.length === 0) {
+        menu.addItem((i) => i.setTitle("No recent activity").setDisabled(true));
+      } else {
+        for (const a of recent) {
+          const icon = a.status === "running" ? "⏳" : a.status === "error" ? "⚠️" : "✓";
+          menu.addItem((i) => i.setTitle(`${icon} ${a.label}`));
+        }
+      }
+      menu.showAtMouseEvent(e);
     });
 
     await this.refreshHealth();
