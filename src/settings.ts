@@ -86,6 +86,26 @@ export class VaultBrainSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Microphone")
+      .setDesc("Device used for in-app recording. Device names appear after you grant mic access once.")
+      .addDropdown(async (d) => {
+        d.addOption("", "System default");
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          devices
+            .filter((dev) => dev.kind === "audioinput")
+            .forEach((dev, i) => d.addOption(dev.deviceId, dev.label || `Microphone ${i + 1}`));
+        } catch {
+          /* enumeration may fail before permission is granted */
+        }
+        d.setValue(this.plugin.settings.micDeviceId);
+        d.onChange(async (v) => {
+          this.plugin.settings.micDeviceId = v;
+          await save();
+        });
+      });
+
+    new Setting(containerEl)
       .setName("Output language")
       .addDropdown((d) =>
         d

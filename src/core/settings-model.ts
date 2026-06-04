@@ -9,6 +9,7 @@ export interface VaultBrainSettings {
   keepAlive: boolean;
   embedModel: string;
   ragTopK: number;
+  micDeviceId: string;
 }
 
 export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: VaultBrainSettings = {
   keepAlive: false,
   embedModel: "nomic-embed-text:latest",
   ragTopK: 6,
+  micDeviceId: "",
 };
 
 // Pure: merge persisted data over defaults, coercing/clamping invalid values.
@@ -57,6 +59,8 @@ export function normalizeSettings(raw: unknown): VaultBrainSettings {
   if (typeof s.embedModel !== "string" || s.embedModel.trim() === "") s.embedModel = DEFAULT_SETTINGS.embedModel;
   const k = Number(s.ragTopK);
   s.ragTopK = Number.isInteger(k) && k >= 1 && k <= 50 ? k : DEFAULT_SETTINGS.ragTopK;
+
+  if (typeof s.micDeviceId !== "string") s.micDeviceId = DEFAULT_SETTINGS.micDeviceId;
 
   return s;
 }

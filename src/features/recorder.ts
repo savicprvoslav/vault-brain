@@ -16,8 +16,9 @@ class Recorder {
     return this.mediaRecorder !== null && this.mediaRecorder.state !== "inactive";
   }
 
-  async start(): Promise<void> {
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  async start(deviceId?: string): Promise<void> {
+    const audio: MediaStreamConstraints["audio"] = deviceId ? { deviceId: { exact: deviceId } } : true;
+    this.stream = await navigator.mediaDevices.getUserMedia({ audio });
     this.chunks = [];
     this.mediaRecorder = new MediaRecorder(this.stream);
     this.mediaRecorder.ondataavailable = (e) => {
@@ -150,7 +151,7 @@ export function registerRecorder(plugin: VaultBrainPlugin): void {
       return;
     }
     try {
-      await recorder.start();
+      await recorder.start(plugin.settings.micDeviceId || undefined);
       showBar();
     } catch (e) {
       new Notice("Vault Brain: couldn't access the microphone — " + (e as Error).message);
