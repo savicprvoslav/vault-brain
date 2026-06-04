@@ -110,3 +110,21 @@
   cursor: pointer;
   padding: 2px 10px;
 }
+
+.vault-brain-qa-editlabel {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.vault-brain-qa-editpreview {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  background: var(--background-primary);
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin: 0 0 6px 0;
+}
+.vault-brain-qa-apply {
+  cursor: pointer;
+}

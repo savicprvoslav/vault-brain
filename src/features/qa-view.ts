@@ -1,12 +1,13 @@
-import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer } from "obsidian";
+import { ItemView, WorkspaceLeaf, TFile, MarkdownRenderer, MarkdownView } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
 import { assembleContext, NoteDoc } from "../core/context.ts";
 import { buildQaMessages, QaTurn } from "../core/qa-prompt.ts";
 import { assembleRagContext } from "../core/rag-context.ts";
+import { buildEditMessages } from "../core/edit-prompt.ts";
 
 export const QA_VIEW_TYPE = "vault-brain-qa";
 
-type Mode = "note" | "vault";
+type Mode = "note" | "vault" | "edit";
 
 export class VaultBrainQaView extends ItemView {
   private messagesEl!: HTMLElement;
@@ -42,6 +43,7 @@ export class VaultBrainQaView extends ItemView {
     const modeSelect = header.createEl("select", { cls: "vault-brain-qa-mode" });
     modeSelect.createEl("option", { value: "note", text: "This note + links" });
     modeSelect.createEl("option", { value: "vault", text: "Whole vault (search)" });
+    modeSelect.createEl("option", { value: "edit", text: "Edit this note" });
     modeSelect.value = this.mode;
     modeSelect.onchange = () => {
       this.mode = modeSelect.value as Mode;
@@ -97,6 +99,8 @@ export class VaultBrainQaView extends ItemView {
     this.resetConversation();
     if (this.mode === "vault") {
       this.renderInfo("Whole-vault search — ask anything about your notes.");
+    } else if (this.mode === "edit") {
+      this.renderInfo("Edit mode — type an instruction (e.g. “replace X with Y”). You’ll preview before applying.");
     } else {
       const file = this.app.workspace.getActiveFile();
       this.renderInfo(file ? `Context: ${file.basename} + linked notes` : "Open a note to ask about it.");
@@ -105,7 +109,7 @@ export class VaultBrainQaView extends ItemView {
 
   // Reset when the active note changes — only in "this note" mode.
   private syncToActiveFile(): void {
-    if (this.mode !== "note") return;
+    if (this.mode === "vault") return;
     const file = this.app.workspace.getActiveFile();
     const path = file?.path ?? null;
     if (path === this.currentPath) return;
@@ -134,6 +138,10 @@ export class VaultBrainQaView extends ItemView {
   private async onSend(): Promise<void> {
     const question = this.inputEl.value.trim();
     if (!question) return;
+    if (this.mode === "edit") {
+      void this.runEdit(question);
+      return;
+    }
     if (this.mode === "note" && !this.app.workspace.getActiveFile()) {
       this.addBubble("assistant", "Open a note first to ask about it.");
       return;
@@ -201,6 +209,56 @@ export class VaultBrainQaView extends ItemView {
       } else {
         bubble.setText(`${answer}${answer ? "\n\n" : ""}[error: ${err.message}]`);
       }
+    } finally {
+      this.setStreaming(false);
+      this.abort = null;
+    }
+  }
+
+  private async runEdit(instruction: string): Promise<void> {
+    const file = this.app.workspace.getActiveFile();
+    if (!file) {
+      this.addBubble("assistant", "Open a note to edit it.");
+      return;
+    }
+    this.inputEl.value = "";
+    this.addBubble("user", instruction);
+    const content = await this.app.vault.cachedRead(file);
+    const bubble = this.addBubble("assistant", "");
+    this.setStreaming(true);
+    this.abort = new AbortController();
+    let revised = "";
+    try {
+      await this.plugin.activity.run("Editing note", () =>
+        this.plugin.provider.chatStream(buildEditMessages(content, instruction), {
+          signal: this.abort!.signal,
+          onToken: (t) => {
+            revised += t;
+            bubble.setText(revised);
+            this.scrollToBottom();
+          },
+        })
+      );
+      const finalRevised = revised.trim();
+      bubble.empty();
+      bubble.createDiv({ cls: "vault-brain-qa-editlabel", text: `Proposed edit of "${file.basename}" — review, then apply:` });
+      bubble.createEl("pre", { cls: "vault-brain-qa-editpreview", text: finalRevised });
+      const applyBtn = bubble.createEl("button", { cls: "vault-brain-qa-apply", text: "Apply to note" });
+      applyBtn.onclick = async () => {
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file);
+        const view = leaf.view;
+        if (view instanceof MarkdownView) {
+          view.editor.setValue(finalRevised);
+        } else {
+          await this.app.vault.modify(file, finalRevised);
+        }
+        applyBtn.setText("Applied ✓ (Cmd-Z to undo)");
+        applyBtn.disabled = true;
+      };
+    } catch (e) {
+      const err = e as Error;
+      if (err.name !== "AbortError") bubble.setText(`[error: ${err.message}]`);
     } finally {
       this.setStreaming(false);
       this.abort = null;
