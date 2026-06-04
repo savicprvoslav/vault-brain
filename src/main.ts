@@ -7,7 +7,7 @@ import { renderStatus, StatusView } from "./core/status-bar.ts";
 import { VaultBrainQaView, QA_VIEW_TYPE } from "./features/qa-view.ts";
 import { RelatedNotesView, RELATED_VIEW_TYPE } from "./features/related-view.ts";
 import { registerVisionCommand } from "./features/vision.ts";
-import { registerVoiceCommands } from "./features/voice.ts";
+import { registerVoiceCommands, processAudioFile, AUDIO_EXTS } from "./features/voice.ts";
 import { registerRecorder } from "./features/recorder.ts";
 import { registerQuickActions } from "./features/actions.ts";
 import { registerOrganizeCommands } from "./features/organize.ts";
@@ -60,6 +60,16 @@ export default class VaultBrainPlugin extends Plugin {
     registerQuickActions(this);
     registerOrganizeCommands(this);
     registerContinueCommand(this);
+
+    this.registerEvent(
+      this.app.vault.on("create", (f) => {
+        const wf = this.settings.watchFolder.trim().replace(/\/$/, "");
+        if (!wf || !(f instanceof TFile)) return;
+        if (!AUDIO_EXTS.includes(f.extension.toLowerCase())) return;
+        if (f.path !== wf && !f.path.startsWith(wf + "/")) return;
+        window.setTimeout(() => void processAudioFile(this, f, "memo"), 800);
+      })
+    );
 
     this.vaultIndex = new VaultIndex(this);
     this.app.workspace.onLayoutReady(() => {

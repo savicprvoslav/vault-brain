@@ -106,6 +106,16 @@ export class VaultBrainSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName("Auto-watch folder for audio")
+      .setDesc("New audio files dropped into this vault folder are transcribed automatically. Leave blank to disable.")
+      .addText((t) =>
+        t.setPlaceholder("e.g. Recordings").setValue(this.plugin.settings.watchFolder).onChange(async (v) => {
+          this.plugin.settings.watchFolder = v.trim();
+          await save();
+        })
+      );
+
+    new Setting(containerEl)
       .setName("Output language")
       .addDropdown((d) =>
         d
