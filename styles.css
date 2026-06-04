@@ -1,1 +1,7 @@
 /* Vault Brain styles */
+.vault-brain-status {
+  cursor: pointer;
+}
+.vault-brain-template {
+  width: 100%;
+}

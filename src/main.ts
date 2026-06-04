@@ -1,13 +1,15 @@
 import { Notice, Plugin } from "obsidian";
-import { DEFAULT_SETTINGS, VaultBrainSettings, VaultBrainSettingTab } from "./settings.ts";
+import { normalizeSettings, VaultBrainSettings } from "./core/settings-model.ts";
+import { VaultBrainSettingTab } from "./settings.ts";
 import { OllamaProvider } from "./core/ollama-provider.ts";
 import { checkHealth } from "./core/health.ts";
-import { renderStatus } from "./core/status-bar.ts";
+import { renderStatus, StatusView } from "./core/status-bar.ts";
 
 export default class VaultBrainPlugin extends Plugin {
   settings!: VaultBrainSettings;
   provider!: OllamaProvider;
   private statusEl!: HTMLElement;
+  private statusView: StatusView | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -15,6 +17,10 @@ export default class VaultBrainPlugin extends Plugin {
 
     this.statusEl = this.addStatusBarItem();
     this.statusEl.setText("⏳ Vault Brain");
+    this.statusEl.addClass("vault-brain-status");
+    this.registerDomEvent(this.statusEl, "click", () => {
+      if (this.statusView) new Notice(this.statusView.click);
+    });
 
     this.addSettingTab(new VaultBrainSettingTab(this.app, this));
 
@@ -39,7 +45,7 @@ export default class VaultBrainPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = normalizeSettings(await this.loadData());
   }
 
   async saveSettings() {
@@ -51,30 +57,30 @@ export default class VaultBrainPlugin extends Plugin {
   async refreshHealth() {
     const state = await checkHealth(this.provider, this.settings.model);
     const view = renderStatus(state, this.settings.model);
+    this.statusView = view;
     this.statusEl.setText(view.text);
     this.statusEl.ariaLabel = view.tooltip;
     this.statusEl.title = view.tooltip;
   }
 
   async testConnection() {
-    const controller = new AbortController();
     const notice = new Notice("Vault Brain: …", 0);
     try {
       let acc = "";
       await this.provider.chatStream(
         [{ role: "user", parts: [{ type: "text", text: "Say hello in 5 words." }] }],
         {
-          signal: controller.signal,
+          signal: AbortSignal.timeout(30000),
           onToken: (t) => {
             acc += t;
             notice.setMessage("Vault Brain: " + acc);
           },
         }
       );
-      window.setTimeout(() => notice.hide(), 4000);
     } catch (e) {
-      notice.hide();
-      new Notice("Vault Brain error: " + (e as Error).message);
+      notice.setMessage("Vault Brain error: " + (e as Error).message);
+    } finally {
+      window.setTimeout(() => notice.hide(), 4000);
     }
   }
 }

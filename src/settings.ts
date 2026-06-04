@@ -1,39 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type VaultBrainPlugin from "./main.ts";
 
-export interface VaultBrainSettings {
-  host: string;
-  port: number;
-  model: string;
-  outputTemplate: string;
-  dailyNoteMode: "append" | "new";
-  contextTokenCap: number;
-  outputLanguage: "auto" | "en" | "sr";
-  keepAlive: boolean;
-}
-
-export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
-**Summary**
-{{summary}}
-
-**Tasks**
-{{tasks}}
-
-**Transcript**
-{{transcript}}
-`;
-
-export const DEFAULT_SETTINGS: VaultBrainSettings = {
-  host: "http://127.0.0.1",
-  port: 11434,
-  model: "gemma4:latest",
-  outputTemplate: DEFAULT_TEMPLATE,
-  dailyNoteMode: "append",
-  contextTokenCap: 8000,
-  outputLanguage: "auto",
-  keepAlive: false,
-};
-
 export class VaultBrainSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: VaultBrainPlugin) {
     super(app, plugin);
@@ -42,7 +9,8 @@ export class VaultBrainSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Vault Brain — local AI" });
+
+    new Setting(containerEl).setName("Vault Brain — local AI").setHeading();
 
     const save = async () => this.plugin.saveSettings();
 
@@ -119,7 +87,7 @@ export class VaultBrainSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Keep model warm")
-      .setDesc("Periodically ping Ollama to avoid cold starts during a session.")
+      .setDesc("Periodically ping Ollama to avoid cold starts during a session. (coming soon)")
       .addToggle((t) =>
         t.setValue(this.plugin.settings.keepAlive).onChange(async (v) => {
           this.plugin.settings.keepAlive = v;
@@ -136,7 +104,7 @@ export class VaultBrainSettingTab extends PluginSettingTab {
           await save();
         });
         t.inputEl.rows = 10;
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("vault-brain-template");
       });
   }
 }

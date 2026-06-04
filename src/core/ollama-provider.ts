@@ -1,7 +1,18 @@
 import type { ChatMessage, ChatStreamOpts, LlmProvider, Part } from "./provider.ts";
 
+export type OpenAiContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "input_audio"; input_audio: { data: string; format: string } };
+
+export interface ChatRequestBody {
+  model: string;
+  stream: boolean;
+  messages: { role: string; content: OpenAiContentPart[] }[];
+}
+
 // Pure: map our Part to an OpenAI content part.
-export function partToOpenAi(part: Part): unknown {
+export function partToOpenAi(part: Part): OpenAiContentPart {
   switch (part.type) {
     case "text":
       return { type: "text", text: part.text };
@@ -13,7 +24,7 @@ export function partToOpenAi(part: Part): unknown {
 }
 
 // Pure: build the /v1/chat/completions request body.
-export function buildChatRequest(model: string, messages: ChatMessage[], stream: boolean): object {
+export function buildChatRequest(model: string, messages: ChatMessage[], stream: boolean): ChatRequestBody {
   return {
     model,
     stream,
@@ -39,6 +50,8 @@ export interface OllamaConfig {
   host: string; // e.g. "http://127.0.0.1"
   port: number; // e.g. 11434
   model: string; // e.g. "gemma4:latest"
+  requestTimeoutMs?: number; // listModels/showCapabilities (default 8000)
+  chatTimeoutMs?: number; // overall cap for a streaming chat (default 120000)
 }
 
 export class OllamaProvider implements LlmProvider {
@@ -50,11 +63,16 @@ export class OllamaProvider implements LlmProvider {
   }
 
   async chatStream(messages: ChatMessage[], opts: ChatStreamOpts): Promise<string> {
+    // AbortSignal.any is available in Node 18.17+/browsers but not typed in TS 5.4's DOM lib.
+    const signal = (AbortSignal as typeof AbortSignal & { any(signals: AbortSignal[]): AbortSignal }).any([
+      opts.signal,
+      AbortSignal.timeout(this.cfg.chatTimeoutMs ?? 120000),
+    ]);
     const res = await this.fetchFn(`${this.base()}/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(buildChatRequest(this.cfg.model, messages, true)),
-      signal: opts.signal,
+      signal,
     });
     if (!res.ok || !res.body) {
       throw new Error(`Ollama returned HTTP ${res.status}`);
@@ -78,11 +96,20 @@ export class OllamaProvider implements LlmProvider {
         }
       }
     }
+    // Flush a complete-but-unterminated final line (stream ended without [DONE]).
+    const tail = parseSseLine(buffer);
+    if (tail) {
+      full += tail;
+      opts.onToken(tail);
+    }
     return full;
   }
 
   async listModels(): Promise<string[]> {
-    const res = await this.fetchFn(`${this.base()}/api/tags`, { method: "GET" });
+    const res = await this.fetchFn(`${this.base()}/api/tags`, {
+      method: "GET",
+      signal: AbortSignal.timeout(this.cfg.requestTimeoutMs ?? 8000),
+    });
     if (!res.ok) throw new Error(`Ollama returned HTTP ${res.status}`);
     const json = (await res.json()) as { models?: { name: string }[] };
     return (json.models ?? []).map((m) => m.name);
@@ -93,6 +120,7 @@ export class OllamaProvider implements LlmProvider {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ model }),
+      signal: AbortSignal.timeout(this.cfg.requestTimeoutMs ?? 8000),
     });
     if (!res.ok) throw new Error(`Ollama returned HTTP ${res.status}`);
     const json = (await res.json()) as { capabilities?: string[] };
