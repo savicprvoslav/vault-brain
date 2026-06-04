@@ -6,3 +6,4 @@ main.js.map
 
 # Obsidian plugin runtime settings (per-vault user state)
 data.json
+vault-index.json

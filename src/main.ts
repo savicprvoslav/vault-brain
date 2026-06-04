@@ -1,4 +1,4 @@
-import { Notice, Plugin, WorkspaceLeaf } from "obsidian";
+import { Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import { normalizeSettings, VaultBrainSettings } from "./core/settings-model.ts";
 import { VaultBrainSettingTab } from "./settings.ts";
 import { OllamaProvider } from "./core/ollama-provider.ts";
@@ -9,10 +9,12 @@ import { registerVisionCommand } from "./features/vision.ts";
 import { registerVoiceCommands } from "./features/voice.ts";
 import { registerRecorder } from "./features/recorder.ts";
 import { registerQuickActions } from "./features/actions.ts";
+import { VaultIndex } from "./features/vault-index.ts";
 
 export default class VaultBrainPlugin extends Plugin {
   settings!: VaultBrainSettings;
   provider!: OllamaProvider;
+  vaultIndex!: VaultIndex;
   private statusEl!: HTMLElement;
   private statusView: StatusView | null = null;
 
@@ -47,6 +49,40 @@ export default class VaultBrainPlugin extends Plugin {
     registerVoiceCommands(this);
     registerRecorder(this);
     registerQuickActions(this);
+
+    this.vaultIndex = new VaultIndex(this);
+    this.app.workspace.onLayoutReady(() => {
+      void (async () => {
+        await this.vaultIndex.load();
+        await this.vaultIndex.reconcile();
+      })();
+    });
+    this.registerEvent(this.app.vault.on("modify", (f) => {
+      if (f instanceof TFile && f.extension === "md") void this.vaultIndex.updateFile(f);
+    }));
+    this.registerEvent(this.app.vault.on("create", (f) => {
+      if (f instanceof TFile && f.extension === "md") void this.vaultIndex.updateFile(f);
+    }));
+    this.registerEvent(this.app.vault.on("delete", (f) => this.vaultIndex.removeFile(f.path)));
+    this.registerEvent(this.app.vault.on("rename", (f, oldPath) => {
+      this.vaultIndex.removeFile(oldPath);
+      if (f instanceof TFile && f.extension === "md") void this.vaultIndex.updateFile(f);
+    }));
+    this.addCommand({
+      id: "rebuild-index",
+      name: "Rebuild vault index",
+      callback: async () => {
+        const n = new Notice("Vault Brain: rebuilding vault index…", 0);
+        try {
+          const count = await this.vaultIndex.reindexAll();
+          n.hide();
+          new Notice(`Vault Brain: indexed ${count} notes.`);
+        } catch (e) {
+          n.hide();
+          new Notice("Vault Brain error: " + (e as Error).message);
+        }
+      },
+    });
 
     await this.refreshHealth();
     this.registerInterval(window.setInterval(() => void this.refreshHealth(), 30000));
