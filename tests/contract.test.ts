@@ -31,3 +31,10 @@ test("lists models and gemma4:latest has audio+vision", { skip: !(await ollamaUp
   const caps = await p.showCapabilities("gemma4:latest");
   assert.ok(caps.includes("audio") && caps.includes("vision"), `caps were: ${caps.join(",")}`);
 });
+
+test("embeds text with nomic-embed-text", { skip: !(await ollamaUp()) }, async () => {
+  const p = new OllamaProvider(cfg);
+  const vecs = await p.embed("nomic-embed-text:latest", ["hello world"]);
+  assert.equal(vecs.length, 1);
+  assert.equal(vecs[0].length, 768);
+});

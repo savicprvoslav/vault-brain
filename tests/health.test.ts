@@ -8,6 +8,7 @@ function stub(over: Partial<LlmProvider>): LlmProvider {
     chatStream: async () => "",
     listModels: async () => [],
     showCapabilities: async () => [],
+    embed: async () => [],
     ...over,
   };
 }

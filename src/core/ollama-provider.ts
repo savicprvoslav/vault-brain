@@ -132,4 +132,16 @@ export class OllamaProvider implements LlmProvider {
     const json = (await res.json()) as { capabilities?: string[] };
     return json.capabilities ?? [];
   }
+
+  async embed(model: string, texts: string[]): Promise<number[][]> {
+    const res = await this.fetchFn(`${this.base()}/api/embed`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, input: texts }),
+      signal: AbortSignal.timeout(60000),
+    });
+    if (!res.ok) throw new Error(`Ollama returned HTTP ${res.status}`);
+    const json = (await res.json()) as { embeddings?: number[][] };
+    return json.embeddings ?? [];
+  }
 }

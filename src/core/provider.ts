@@ -19,4 +19,5 @@ export interface LlmProvider {
   chatStream(messages: ChatMessage[], opts: ChatStreamOpts): Promise<string>;
   listModels(): Promise<string[]>;
   showCapabilities(model: string): Promise<string[]>;
+  embed(model: string, texts: string[]): Promise<number[][]>;
 }
