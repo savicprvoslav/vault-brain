@@ -15,3 +15,11 @@ test("falls back to transcript when no headers", () => {
   assert.equal(r.summary, "");
   assert.equal(r.tasks, "");
 });
+
+test("handles a missing transcript section", () => {
+  const text = "### SUMMARY\n- s1\n\n### TASKS\n- [ ] t1";
+  const r = parseVoiceOutput(text);
+  assert.equal(r.transcript, "");
+  assert.match(r.summary, /s1/);
+  assert.match(r.tasks, /t1/);
+});

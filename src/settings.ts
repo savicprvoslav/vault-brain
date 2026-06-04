@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type VaultBrainPlugin from "./main.ts";
 
 export class VaultBrainSettingTab extends PluginSettingTab {
@@ -19,7 +19,11 @@ export class VaultBrainSettingTab extends PluginSettingTab {
       .setDesc("Local endpoint only. Defaults to loopback for privacy.")
       .addText((t) =>
         t.setValue(this.plugin.settings.host).onChange(async (v) => {
-          this.plugin.settings.host = v.trim();
+          const host = v.trim();
+          this.plugin.settings.host = host;
+          if (!/^https?:\/\/(localhost|127\.|\[?::1\]?)/i.test(host)) {
+            new Notice("Vault Brain: non-local host set — your notes would leave this machine. Use a localhost address to keep everything private.");
+          }
           await save();
         })
       );

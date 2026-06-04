@@ -66,6 +66,8 @@ async function runImageExtraction(plugin: VaultBrainPlugin, editor: Editor): Pro
     return;
   }
 
+  // Insert directly below the image embed line (which may be above the cursor if the command
+  // was run from further down the note). Per spec, the extracted text goes below the embed.
   const endOfEmbed = { line: embedLine, ch: editor.getLine(embedLine).length };
   editor.replaceRange(`\n\n${text}\n`, endOfEmbed);
   new Notice("Vault Brain: image text inserted.");

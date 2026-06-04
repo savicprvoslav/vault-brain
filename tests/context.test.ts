@@ -31,3 +31,12 @@ test("omits linked notes that don't fit and flags truncation", () => {
   assert.equal(r.truncated, true);
   assert.ok(r.included < 3);
 });
+
+test("counts exactly the linked notes that fit and joins with blank line", () => {
+  const small = "z".repeat(40);
+  const big = "y".repeat(400);
+  const r = assembleContext(note("A", "alpha"), [note("B", small), note("C", big)], 40);
+  assert.equal(r.included, 2);
+  assert.equal(r.truncated, true);
+  assert.match(r.text, /## A\nalpha\n\n## B/);
+});

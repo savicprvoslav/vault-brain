@@ -102,9 +102,9 @@ export default class VaultBrainPlugin extends Plugin {
     const { workspace } = this.app;
     let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(QA_VIEW_TYPE)[0] ?? null;
     if (!leaf) {
-      leaf = workspace.getRightLeaf(false);
-      await leaf?.setViewState({ type: QA_VIEW_TYPE, active: true });
+      leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
+      await leaf.setViewState({ type: QA_VIEW_TYPE, active: true });
     }
-    if (leaf) workspace.revealLeaf(leaf);
+    workspace.revealLeaf(leaf);
   }
 }

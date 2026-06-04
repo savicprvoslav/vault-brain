@@ -100,8 +100,8 @@ async function processAudioFile(plugin: VaultBrainPlugin, file: TFile): Promise<
 
     if (plugin.settings.dailyNoteMode === "new") {
       const path = `${file.basename} (memo).md`;
-      const target =
-        (plugin.app.vault.getAbstractFileByPath(path) as TFile) ?? (await plugin.app.vault.create(path, ""));
+      const existing = plugin.app.vault.getAbstractFileByPath(path);
+      const target = existing instanceof TFile ? existing : await plugin.app.vault.create(path, "");
       await plugin.app.vault.append(target, `${filled}\n`);
       await plugin.app.workspace.getLeaf(true).openFile(target);
     } else {
