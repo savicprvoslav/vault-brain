@@ -3,6 +3,7 @@ import type VaultBrainPlugin from "../main.ts";
 import { chunkNote } from "../core/chunk.ts";
 import { topK, cosine, averageVectors } from "../core/similarity.ts";
 import type { RagHit } from "../core/rag-context.ts";
+import { cleanSnippet } from "../core/snippet.ts";
 
 interface IndexedNote {
   mtime: number;
@@ -115,17 +116,17 @@ export class VaultIndex {
       }
     }
     if (!qvec || qvec.length === 0) return [];
-    const best = new Map<string, { score: number; snippet: string }>();
+    const best = new Map<string, { score: number; text: string }>();
     for (const [p, note] of Object.entries(this.data)) {
       if (p === path) continue;
       for (const c of note.chunks) {
         const s = cosine(qvec, c.vector);
         const cur = best.get(p);
-        if (!cur || s > cur.score) best.set(p, { score: s, snippet: c.text.replace(/\s+/g, " ").slice(0, 120) });
+        if (!cur || s > cur.score) best.set(p, { score: s, text: c.text });
       }
     }
     return [...best.entries()]
-      .map(([p, v]) => ({ path: p, title: p.replace(/\.md$/, "").split("/").pop() ?? p, score: v.score, snippet: v.snippet }))
+      .map(([p, v]) => ({ path: p, title: p.replace(/\.md$/, "").split("/").pop() ?? p, score: v.score, snippet: cleanSnippet(v.text) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, k);
   }
