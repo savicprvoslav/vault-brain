@@ -55,8 +55,14 @@ export interface OllamaConfig {
 }
 
 export class OllamaProvider implements LlmProvider {
-  // fetchFn is injectable for testing; defaults to the global fetch.
-  constructor(private cfg: OllamaConfig, private fetchFn: typeof fetch = fetch) {}
+  // fetchFn is injectable for testing. The default MUST be bound to the global:
+  // in Chromium (Obsidian) `fetch` throws "Illegal invocation" when called as a
+  // method of another object (e.g. `this.fetchFn(...)`). Node's fetch doesn't enforce
+  // this, which is why unit tests don't catch it — only runtime in Obsidian does.
+  constructor(
+    private cfg: OllamaConfig,
+    private fetchFn: typeof fetch = globalThis.fetch.bind(globalThis) as typeof fetch,
+  ) {}
 
   private base(): string {
     return `${this.cfg.host}:${this.cfg.port}`;
