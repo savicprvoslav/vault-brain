@@ -120,7 +120,13 @@ export class VaultBrainQaView extends ItemView {
       });
       this.history.push({ role: "user", text: question }, { role: "assistant", text: answer });
     } catch (e) {
-      bubble.setText(`${answer}\n\n[error: ${(e as Error).message}]`);
+      const err = e as Error;
+      if (err.name === "AbortError") {
+        // User pressed Stop — keep whatever streamed so far and remember the turn.
+        if (answer) this.history.push({ role: "user", text: question }, { role: "assistant", text: answer });
+      } else {
+        bubble.setText(`${answer}${answer ? "\n\n" : ""}[error: ${err.message}]`);
+      }
     } finally {
       this.setStreaming(false);
       this.abort = null;
