@@ -1,9 +1,10 @@
-import { Notice, Plugin } from "obsidian";
+import { Notice, Plugin, WorkspaceLeaf } from "obsidian";
 import { normalizeSettings, VaultBrainSettings } from "./core/settings-model.ts";
 import { VaultBrainSettingTab } from "./settings.ts";
 import { OllamaProvider } from "./core/ollama-provider.ts";
 import { checkHealth } from "./core/health.ts";
 import { renderStatus, StatusView } from "./core/status-bar.ts";
+import { VaultBrainQaView, QA_VIEW_TYPE } from "./features/qa-view.ts";
 
 export default class VaultBrainPlugin extends Plugin {
   settings!: VaultBrainSettings;
@@ -28,6 +29,14 @@ export default class VaultBrainPlugin extends Plugin {
       id: "test-connection",
       name: "Test connection (stream a hello)",
       callback: () => this.testConnection(),
+    });
+
+    this.registerView(QA_VIEW_TYPE, (leaf) => new VaultBrainQaView(leaf, this));
+    this.addRibbonIcon("message-circle", "Vault Brain Q&A", () => void this.activateQaView());
+    this.addCommand({
+      id: "open-qa",
+      name: "Open Q&A panel",
+      callback: () => void this.activateQaView(),
     });
 
     await this.refreshHealth();
@@ -82,5 +91,15 @@ export default class VaultBrainPlugin extends Plugin {
     } finally {
       window.setTimeout(() => notice.hide(), 4000);
     }
+  }
+
+  async activateQaView(): Promise<void> {
+    const { workspace } = this.app;
+    let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(QA_VIEW_TYPE)[0] ?? null;
+    if (!leaf) {
+      leaf = workspace.getRightLeaf(false);
+      await leaf?.setViewState({ type: QA_VIEW_TYPE, active: true });
+    }
+    if (leaf) workspace.revealLeaf(leaf);
   }
 }
