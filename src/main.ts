@@ -6,6 +6,7 @@ import { checkHealth } from "./core/health.ts";
 import { renderStatus, StatusView } from "./core/status-bar.ts";
 import { VaultBrainQaView, QA_VIEW_TYPE } from "./features/qa-view.ts";
 import { registerVisionCommand } from "./features/vision.ts";
+import { registerVoiceCommands } from "./features/voice.ts";
 
 export default class VaultBrainPlugin extends Plugin {
   settings!: VaultBrainSettings;
@@ -41,6 +42,7 @@ export default class VaultBrainPlugin extends Plugin {
     });
 
     registerVisionCommand(this);
+    registerVoiceCommands(this);
 
     await this.refreshHealth();
     this.registerInterval(window.setInterval(() => void this.refreshHealth(), 30000));
