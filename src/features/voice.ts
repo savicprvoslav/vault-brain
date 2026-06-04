@@ -1,11 +1,11 @@
 import { Notice, TFile, TAbstractFile, moment, Menu, MarkdownView } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
 import { encodeWavPcm16 } from "../core/wav.ts";
-import { buildVoiceMessages } from "../core/voice-prompt.ts";
+import { buildVoiceMessages, buildMeetingMessages } from "../core/voice-prompt.ts";
 import { parseVoiceOutput } from "../core/voice-parse.ts";
 import { render } from "../core/template.ts";
 
-const AUDIO_EXTS = ["mp3", "wav", "m4a", "ogg", "webm", "aac", "flac", "mp4"];
+export const AUDIO_EXTS = ["mp3", "wav", "m4a", "ogg", "webm", "aac", "flac", "mp4"];
 
 export function registerVoiceCommands(plugin: VaultBrainPlugin): void {
   plugin.addCommand({
@@ -22,6 +22,12 @@ export function registerVoiceCommands(plugin: VaultBrainPlugin): void {
             .setTitle("Vault Brain: Voice memo → note")
             .setIcon("microphone")
             .onClick(() => void processAudioFile(plugin, file))
+        );
+        menu.addItem((item) =>
+          item
+            .setTitle("Vault Brain: Process as meeting (who said what)")
+            .setIcon("users")
+            .onClick(() => void processAudioFile(plugin, file, "meeting"))
         );
       }
     })
@@ -85,13 +91,13 @@ async function resolveDailyNote(plugin: VaultBrainPlugin): Promise<TFile> {
   return plugin.app.vault.create(path, "");
 }
 
-export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBuffer, title: string): Promise<void> {
+export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBuffer, title: string, kind: "memo" | "meeting" = "memo"): Promise<void> {
   const notice = new Notice(`Vault Brain: processing ${title}…`, 0);
   try {
     const wav = await toWav16kMono(bytes);
-    const messages = buildVoiceMessages(bytesToBase64(wav));
+    const messages = kind === "meeting" ? buildMeetingMessages(bytesToBase64(wav)) : buildVoiceMessages(bytesToBase64(wav));
     let out = "";
-    await plugin.activity.run("Transcribing memo", () =>
+    await plugin.activity.run(kind === "meeting" ? "Processing meeting" : "Transcribing memo", () =>
       plugin.provider.chatStream(messages, {
         signal: AbortSignal.timeout(300000),
         onToken: (t) => { out += t; },
@@ -124,7 +130,7 @@ export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBu
   }
 }
 
-async function processAudioFile(plugin: VaultBrainPlugin, file: TFile): Promise<void> {
+export async function processAudioFile(plugin: VaultBrainPlugin, file: TFile, kind: "memo" | "meeting" = "memo"): Promise<void> {
   const bytes = await plugin.app.vault.readBinary(file);
-  await processAudioBytes(plugin, bytes, file.basename);
+  await processAudioBytes(plugin, bytes, file.basename, kind);
 }
