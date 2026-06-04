@@ -74,32 +74,26 @@ async function resolveDailyNote(plugin: VaultBrainPlugin): Promise<TFile> {
   return plugin.app.vault.create(path, "");
 }
 
-async function processAudioFile(plugin: VaultBrainPlugin, file: TFile): Promise<void> {
-  const notice = new Notice(`Vault Brain: processing ${file.name}…`, 0);
+export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBuffer, title: string): Promise<void> {
+  const notice = new Notice(`Vault Brain: processing ${title}…`, 0);
   try {
-    const bytes = await plugin.app.vault.readBinary(file);
     const wav = await toWav16kMono(bytes);
     const messages = buildVoiceMessages(bytesToBase64(wav));
-
     let out = "";
     await plugin.provider.chatStream(messages, {
       signal: AbortSignal.timeout(300000),
-      onToken: (t) => {
-        out += t;
-      },
+      onToken: (t) => { out += t; },
     });
-
     const sections = parseVoiceOutput(out);
     const filled = render(plugin.settings.outputTemplate, {
       date: (moment as unknown as () => { format: (f: string) => string })().format("YYYY-MM-DD"),
-      title: file.basename,
+      title,
       summary: sections.summary,
       tasks: sections.tasks,
       transcript: sections.transcript,
     });
-
     if (plugin.settings.dailyNoteMode === "new") {
-      const path = `${file.basename} (memo).md`;
+      const path = `${title} (memo).md`;
       const existing = plugin.app.vault.getAbstractFileByPath(path);
       const target = existing instanceof TFile ? existing : await plugin.app.vault.create(path, "");
       await plugin.app.vault.append(target, `${filled}\n`);
@@ -108,11 +102,15 @@ async function processAudioFile(plugin: VaultBrainPlugin, file: TFile): Promise<
       const daily = await resolveDailyNote(plugin);
       await plugin.app.vault.append(daily, `\n${filled}\n`);
     }
-
     notice.hide();
     new Notice("Vault Brain: voice memo added.");
   } catch (e) {
     notice.hide();
     new Notice("Vault Brain error: " + (e as Error).message);
   }
+}
+
+async function processAudioFile(plugin: VaultBrainPlugin, file: TFile): Promise<void> {
+  const bytes = await plugin.app.vault.readBinary(file);
+  await processAudioBytes(plugin, bytes, file.basename);
 }
