@@ -11,6 +11,7 @@ import { registerVoiceCommands } from "./features/voice.ts";
 import { registerRecorder } from "./features/recorder.ts";
 import { registerQuickActions } from "./features/actions.ts";
 import { registerOrganizeCommands } from "./features/organize.ts";
+import { registerContinueCommand } from "./features/continue.ts";
 import { VaultIndex } from "./features/vault-index.ts";
 import { Activity, renderActivity } from "./core/activity.ts";
 
@@ -58,6 +59,7 @@ export default class VaultBrainPlugin extends Plugin {
     registerRecorder(this);
     registerQuickActions(this);
     registerOrganizeCommands(this);
+    registerContinueCommand(this);
 
     this.vaultIndex = new VaultIndex(this);
     this.app.workspace.onLayoutReady(() => {
