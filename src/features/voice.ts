@@ -91,10 +91,12 @@ export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBu
     const wav = await toWav16kMono(bytes);
     const messages = buildVoiceMessages(bytesToBase64(wav));
     let out = "";
-    await plugin.provider.chatStream(messages, {
-      signal: AbortSignal.timeout(300000),
-      onToken: (t) => { out += t; },
-    });
+    await plugin.activity.run("Transcribing memo", () =>
+      plugin.provider.chatStream(messages, {
+        signal: AbortSignal.timeout(300000),
+        onToken: (t) => { out += t; },
+      })
+    );
     const sections = parseVoiceOutput(out);
     const filled = render(plugin.settings.outputTemplate, {
       date: (moment as unknown as () => { format: (f: string) => string })().format("YYYY-MM-DD"),

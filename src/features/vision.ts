@@ -47,12 +47,12 @@ async function runImageExtraction(plugin: VaultBrainPlugin, editor: Editor): Pro
   const notice = new Notice("Vault Brain: extracting text from image…", 0);
   let out = "";
   try {
-    await plugin.provider.chatStream(messages, {
-      signal: AbortSignal.timeout(120000),
-      onToken: (t) => {
-        out += t;
-      },
-    });
+    await plugin.activity.run("Extracting image text", () =>
+      plugin.provider.chatStream(messages, {
+        signal: AbortSignal.timeout(120000),
+        onToken: (t) => { out += t; },
+      })
+    );
   } catch (e) {
     notice.hide();
     new Notice("Vault Brain error: " + (e as Error).message);

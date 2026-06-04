@@ -66,29 +66,33 @@ export class VaultIndex {
 
   // Re-embed changed/new notes, drop deleted. Returns number of notes (re)embedded.
   async reconcile(): Promise<number> {
-    const files = this.plugin.app.vault.getMarkdownFiles();
-    const present = new Set(files.map((f) => f.path));
-    for (const p of Object.keys(this.data)) {
-      if (!present.has(p)) delete this.data[p];
-    }
-    let changed = 0;
-    for (const f of files) {
-      const cur = this.data[f.path];
-      if (!cur || cur.mtime !== f.stat.mtime) {
-        await this.updateFile(f);
-        changed++;
+    return this.plugin.activity.run("Indexing vault", async () => {
+      const files = this.plugin.app.vault.getMarkdownFiles();
+      const present = new Set(files.map((f) => f.path));
+      for (const p of Object.keys(this.data)) {
+        if (!present.has(p)) delete this.data[p];
       }
-    }
-    if (changed > 0) await this.save();
-    return changed;
+      let changed = 0;
+      for (const f of files) {
+        const cur = this.data[f.path];
+        if (!cur || cur.mtime !== f.stat.mtime) {
+          await this.updateFile(f);
+          changed++;
+        }
+      }
+      if (changed > 0) await this.save();
+      return changed;
+    });
   }
 
   async reindexAll(): Promise<number> {
-    this.data = {};
-    const files = this.plugin.app.vault.getMarkdownFiles();
-    for (const f of files) await this.updateFile(f);
-    await this.save();
-    return files.length;
+    return this.plugin.activity.run("Indexing vault", async () => {
+      this.data = {};
+      const files = this.plugin.app.vault.getMarkdownFiles();
+      for (const f of files) await this.updateFile(f);
+      await this.save();
+      return files.length;
+    });
   }
 
   async search(query: string, k: number): Promise<RagHit[]> {

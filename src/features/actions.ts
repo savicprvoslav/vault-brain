@@ -45,12 +45,12 @@ async function runAction(
   const notice = new Notice(`Vault Brain: ${action.label}…`, 0);
   let out = "";
   try {
-    await plugin.provider.chatStream(buildActionMessages(action.id, selection), {
-      signal: AbortSignal.timeout(120000),
-      onToken: (t) => {
-        out += t;
-      },
-    });
+    await plugin.activity.run(action.label, () =>
+      plugin.provider.chatStream(buildActionMessages(action.id, selection), {
+        signal: AbortSignal.timeout(120000),
+        onToken: (t) => { out += t; },
+      })
+    );
   } catch (e) {
     notice.hide();
     new Notice("Vault Brain error: " + (e as Error).message);
