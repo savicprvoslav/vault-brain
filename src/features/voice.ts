@@ -1,5 +1,7 @@
 import { Notice, TFile, TAbstractFile, moment, Menu, MarkdownView } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
+
+const now = (): { format: (f: string) => string } => (moment as unknown as () => { format: (f: string) => string })();
 import { encodeWavPcm16 } from "../core/wav.ts";
 import { buildVoiceMessages, buildMeetingMessages } from "../core/voice-prompt.ts";
 import { parseVoiceOutput } from "../core/voice-parse.ts";
@@ -51,7 +53,7 @@ async function toWav16kMono(bytes: ArrayBuffer): Promise<Uint8Array> {
   try {
     decoded = await decodeCtx.decodeAudioData(bytes.slice(0));
   } finally {
-    void decodeCtx.close();
+    await decodeCtx.close();
   }
   const targetRate = 16000;
   const frames = Math.max(1, Math.ceil(decoded.duration * targetRate));
@@ -84,7 +86,7 @@ async function resolveDailyNote(plugin: VaultBrainPlugin): Promise<TFile> {
   const opts = dn?.instance?.options ?? {};
   const format: string = opts.format || "YYYY-MM-DD";
   const folder: string = (opts.folder || "").trim();
-  const name = (moment as unknown as () => { format: (f: string) => string })().format(format);
+  const name = now().format(format);
   const path = folder ? `${folder}/${name}.md` : `${name}.md`;
   const existing = plugin.app.vault.getAbstractFileByPath(path);
   if (existing instanceof TFile) return existing;
@@ -105,7 +107,7 @@ export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBu
     );
     const sections = parseVoiceOutput(out);
     const filled = render(plugin.settings.outputTemplate, {
-      date: (moment as unknown as () => { format: (f: string) => string })().format("YYYY-MM-DD"),
+      date: now().format("YYYY-MM-DD"),
       title,
       summary: sections.summary,
       tasks: sections.tasks,

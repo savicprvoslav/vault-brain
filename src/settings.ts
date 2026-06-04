@@ -144,7 +144,7 @@ export class VaultBrainSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Keep model warm")
-      .setDesc("Periodically ping Ollama to avoid cold starts during a session. (coming soon)")
+      .setDesc("Periodically ping Ollama to avoid cold starts during a session.")
       .addToggle((t) =>
         t.setValue(this.plugin.settings.keepAlive).onChange(async (v) => {
           this.plugin.settings.keepAlive = v;

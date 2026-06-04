@@ -42,19 +42,26 @@ export class VaultIndex {
   }
 
   async updateFile(file: TFile): Promise<void> {
-    const text = await this.plugin.app.vault.cachedRead(file);
-    const chunks = chunkNote(text);
-    if (chunks.length === 0) {
-      delete this.data[file.path];
+    try {
+      const text = await this.plugin.app.vault.cachedRead(file);
+      const chunks = chunkNote(text);
+      if (chunks.length === 0) {
+        delete this.data[file.path];
+        this.scheduleSave();
+        return;
+      }
+      const vectors = await this.plugin.provider.embed(this.plugin.settings.embedModel, chunks);
+      if (vectors.length < chunks.length || vectors.some((v) => v.length === 0)) {
+        return; // soft embed failure — keep the prior entry, don't poison the index
+      }
+      this.data[file.path] = {
+        mtime: file.stat.mtime,
+        chunks: chunks.map((t, i) => ({ text: t, vector: vectors[i] })),
+      };
       this.scheduleSave();
-      return;
+    } catch {
+      // read/embed failed (e.g. Ollama down) — retain prior entry, no unhandled rejection
     }
-    const vectors = await this.plugin.provider.embed(this.plugin.settings.embedModel, chunks);
-    this.data[file.path] = {
-      mtime: file.stat.mtime,
-      chunks: chunks.map((t, i) => ({ text: t, vector: vectors[i] ?? [] })),
-    };
-    this.scheduleSave();
   }
 
   removeFile(path: string): void {

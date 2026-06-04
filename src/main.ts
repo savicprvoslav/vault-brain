@@ -19,13 +19,14 @@ export default class VaultBrainPlugin extends Plugin {
   settings!: VaultBrainSettings;
   provider!: OllamaProvider;
   vaultIndex!: VaultIndex;
-  activity = new Activity();
+  activity!: Activity;
   private statusEl!: HTMLElement;
   private statusView: StatusView | null = null;
 
   async onload() {
     await this.loadSettings();
     this.rebuildProvider();
+    this.activity = new Activity();
 
     this.statusEl = this.addStatusBarItem();
     this.statusEl.setText("⏳ Vault Brain");
@@ -67,7 +68,7 @@ export default class VaultBrainPlugin extends Plugin {
         if (!wf || !(f instanceof TFile)) return;
         if (!AUDIO_EXTS.includes(f.extension.toLowerCase())) return;
         if (f.path !== wf && !f.path.startsWith(wf + "/")) return;
-        window.setTimeout(() => void processAudioFile(this, f, "memo"), 800);
+        void this.processWhenStable(f);
       })
     );
 
@@ -79,7 +80,7 @@ export default class VaultBrainPlugin extends Plugin {
       })();
     });
     this.registerEvent(this.app.vault.on("modify", (f) => {
-      if (f instanceof TFile && f.extension === "md") void this.vaultIndex.updateFile(f);
+      if (f instanceof TFile && f.extension === "md") this.debouncedIndex(f);
     }));
     this.registerEvent(this.app.vault.on("create", (f) => {
       if (f instanceof TFile && f.extension === "md") void this.vaultIndex.updateFile(f);
@@ -115,7 +116,7 @@ export default class VaultBrainPlugin extends Plugin {
     this.activity.onChange(updateActivity);
     updateActivity();
     activityEl.style.cursor = "pointer";
-    activityEl.addEventListener("click", (e) => {
+    this.registerDomEvent(activityEl, "click", (e: MouseEvent) => {
       const menu = new Menu();
       const recent = this.activity.recent();
       if (recent.length === 0) {
@@ -131,6 +132,41 @@ export default class VaultBrainPlugin extends Plugin {
 
     await this.refreshHealth();
     this.registerInterval(window.setInterval(() => void this.refreshHealth(), 30000));
+    this.registerInterval(
+      window.setInterval(() => {
+        if (!this.settings.keepAlive) return;
+        void this.provider
+          .chatStream([{ role: "user", parts: [{ type: "text", text: "hi" }] }], {
+            signal: AbortSignal.timeout(10000),
+            onToken: () => {},
+          })
+          .catch(() => {});
+      }, 240000)
+    );
+  }
+
+  private indexTimers = new Map<string, number>();
+  private debouncedIndex(f: TFile): void {
+    const prev = this.indexTimers.get(f.path);
+    if (prev) window.clearTimeout(prev);
+    this.indexTimers.set(
+      f.path,
+      window.setTimeout(() => {
+        this.indexTimers.delete(f.path);
+        void this.vaultIndex.updateFile(f);
+      }, 2000)
+    );
+  }
+
+  private async processWhenStable(f: TFile): Promise<void> {
+    let last = -1;
+    for (let i = 0; i < 12; i++) {
+      await new Promise((r) => window.setTimeout(r, 500));
+      const size = f.stat.size;
+      if (size > 0 && size === last) break;
+      last = size;
+    }
+    void processAudioFile(this, f, "memo");
   }
 
   onunload() {}

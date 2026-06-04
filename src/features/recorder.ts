@@ -80,6 +80,7 @@ export function registerRecorder(plugin: VaultBrainPlugin): void {
   let pauseBtn: HTMLButtonElement | null = null;
   let interval: number | null = null;
   let elapsed = 0;
+  let finishing = false;
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
@@ -95,10 +96,12 @@ export function registerRecorder(plugin: VaultBrainPlugin): void {
   };
 
   const finish = async () => {
+    if (finishing) return;
     if (interval !== null) {
       window.clearInterval(interval);
       interval = null;
     }
+    finishing = true;
     if (bar) {
       bar.empty();
       bar.createSpan({ cls: "vault-brain-rec-timer", text: "⏳ Transcribing…" });
@@ -115,6 +118,7 @@ export function registerRecorder(plugin: VaultBrainPlugin): void {
   };
 
   const showBar = () => {
+    finishing = false;
     elapsed = 0;
     bar = document.body.createDiv({ cls: "vault-brain-rec-bar" });
     bar.createSpan({ cls: "vault-brain-rec-dot", text: "🔴" });
@@ -131,8 +135,9 @@ export function registerRecorder(plugin: VaultBrainPlugin): void {
         pauseBtn?.setText("⏸ Pause");
       }
     };
-    stopBtn.onclick = () => void finish();
+    stopBtn.onclick = () => { if (!finishing) void finish(); };
     cancelBtn.onclick = () => {
+      if (finishing) return;
       recorder.cancel();
       removeBar();
       new Notice("Vault Brain: recording cancelled.");
