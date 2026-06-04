@@ -7,6 +7,8 @@ export interface VaultBrainSettings {
   contextTokenCap: number;
   outputLanguage: "auto" | "en" | "sr";
   keepAlive: boolean;
+  embedModel: string;
+  ragTopK: number;
 }
 
 export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
@@ -29,6 +31,8 @@ export const DEFAULT_SETTINGS: VaultBrainSettings = {
   contextTokenCap: 8000,
   outputLanguage: "auto",
   keepAlive: false,
+  embedModel: "nomic-embed-text:latest",
+  ragTopK: 6,
 };
 
 // Pure: merge persisted data over defaults, coercing/clamping invalid values.
@@ -49,6 +53,10 @@ export function normalizeSettings(raw: unknown): VaultBrainSettings {
   if (typeof s.model !== "string" || s.model.trim() === "") s.model = DEFAULT_SETTINGS.model;
   if (typeof s.outputTemplate !== "string") s.outputTemplate = DEFAULT_SETTINGS.outputTemplate;
   s.keepAlive = Boolean(s.keepAlive);
+
+  if (typeof s.embedModel !== "string" || s.embedModel.trim() === "") s.embedModel = DEFAULT_SETTINGS.embedModel;
+  const k = Number(s.ragTopK);
+  s.ragTopK = Number.isInteger(k) && k >= 1 && k <= 50 ? k : DEFAULT_SETTINGS.ragTopK;
 
   return s;
 }

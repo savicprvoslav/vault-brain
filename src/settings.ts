@@ -49,6 +49,29 @@ export class VaultBrainSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("Embedding model")
+      .setDesc("Local model used to index your vault for whole-vault search.")
+      .addText((t) =>
+        t.setValue(this.plugin.settings.embedModel).onChange(async (v) => {
+          this.plugin.settings.embedModel = v.trim();
+          await save();
+        })
+      );
+
+    new Setting(containerEl)
+      .setName("Vault search results (top-K)")
+      .setDesc("How many note chunks to retrieve for a whole-vault question.")
+      .addText((t) =>
+        t.setValue(String(this.plugin.settings.ragTopK)).onChange(async (v) => {
+          const n = Number(v);
+          if (Number.isInteger(n) && n >= 1) {
+            this.plugin.settings.ragTopK = n;
+            await save();
+          }
+        })
+      );
+
+    new Setting(containerEl)
       .setName("Daily-note mode")
       .setDesc("Where processed voice memos go.")
       .addDropdown((d) =>
