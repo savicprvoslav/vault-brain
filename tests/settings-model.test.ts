@@ -32,3 +32,12 @@ test("blank host/model fall back to defaults", () => {
   assert.equal(normalizeSettings({ host: "  " }).host, DEFAULT_SETTINGS.host);
   assert.equal(normalizeSettings({ model: "" }).model, DEFAULT_SETTINGS.model);
 });
+test("preserves and clamps the newer fields", () => {
+  const s = normalizeSettings({ embedModel: "x", ragTopK: 100, micDeviceId: "mic1", customPrompts: "A :: b", watchFolder: "Rec" });
+  assert.equal(s.embedModel, "x");
+  assert.equal(s.ragTopK, DEFAULT_SETTINGS.ragTopK); // 100 > 50 -> falls back to default
+  assert.equal(s.micDeviceId, "mic1");
+  assert.equal(s.customPrompts, "A :: b");
+  assert.equal(s.watchFolder, "Rec");
+  assert.equal(normalizeSettings({ ragTopK: 6 }).ragTopK, 6);
+});

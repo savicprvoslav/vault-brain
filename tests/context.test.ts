@@ -40,3 +40,8 @@ test("counts exactly the linked notes that fit and joins with blank line", () =>
   assert.equal(r.truncated, true);
   assert.match(r.text, /## A\nalpha\n\n## B/);
 });
+test("empty active body still includes the note", () => {
+  const r = assembleContext({ title: "A", body: "" }, [], 1000);
+  assert.equal(r.included, 1);
+  assert.equal(r.truncated, false);
+});

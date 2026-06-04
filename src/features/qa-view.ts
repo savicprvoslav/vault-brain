@@ -1,4 +1,4 @@
-import { App, ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, MarkdownRenderer, MarkdownView, FuzzySuggestModal } from "obsidian";
+import { App, ItemView, WorkspaceLeaf, TFile, TFolder, TAbstractFile, MarkdownRenderer, MarkdownView, FuzzySuggestModal, Notice } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
 import { assembleContext, NoteDoc } from "../core/context.ts";
 import { buildQaMessages, QaTurn } from "../core/qa-prompt.ts";
@@ -283,7 +283,7 @@ export class VaultBrainQaView extends ItemView {
     }
     this.inputEl.value = "";
     this.addBubble("user", instruction);
-    const content = await this.app.vault.cachedRead(file);
+    const content = await this.app.vault.read(file);
     const bubble = this.addBubble("assistant", "");
     this.setStreaming(true);
     this.abort = new AbortController();
@@ -310,15 +310,23 @@ export class VaultBrainQaView extends ItemView {
       }
       const applyBtn = bubble.createEl("button", { cls: "vault-brain-qa-apply", text: "Apply to note" });
       applyBtn.onclick = async () => {
+        const current = await this.app.vault.read(file);
+        if (current !== content) {
+          new Notice("Vault Brain: this note changed since the preview — re-run the edit.");
+          applyBtn.setText("Out of date");
+          applyBtn.disabled = true;
+          return;
+        }
         const leaf = this.app.workspace.getLeaf(false);
         await leaf.openFile(file);
         const view = leaf.view;
         if (view instanceof MarkdownView) {
           view.editor.setValue(finalRevised);
+          applyBtn.setText("Applied ✓ (Cmd-Z to undo)");
         } else {
           await this.app.vault.modify(file, finalRevised);
+          applyBtn.setText("Applied ✓");
         }
-        applyBtn.setText("Applied ✓ (Cmd-Z to undo)");
         applyBtn.disabled = true;
       };
     } catch (e) {

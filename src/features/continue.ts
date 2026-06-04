@@ -31,6 +31,7 @@ async function continueWriting(plugin: VaultBrainPlugin, editor: Editor): Promis
         },
       })
     );
+    if (!acc.trim()) new Notice("Vault Brain: nothing to continue.");
   } catch (e) {
     new Notice("Vault Brain error: " + (e as Error).message);
   }

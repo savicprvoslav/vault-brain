@@ -17,3 +17,6 @@ test("truncates when over the cap", () => {
   assert.equal(r.truncated, true);
   assert.ok(r.sources.length < 2);
 });
+test("empty hits yield empty context", () => {
+  assert.deepEqual(assembleRagContext([], 1000), { text: "", sources: [], truncated: false });
+});
