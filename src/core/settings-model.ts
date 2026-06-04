@@ -10,6 +10,7 @@ export interface VaultBrainSettings {
   embedModel: string;
   ragTopK: number;
   micDeviceId: string;
+  customPrompts: string;
 }
 
 export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS: VaultBrainSettings = {
   embedModel: "nomic-embed-text:latest",
   ragTopK: 6,
   micDeviceId: "",
+  customPrompts: "",
 };
 
 // Pure: merge persisted data over defaults, coercing/clamping invalid values.
@@ -61,6 +63,7 @@ export function normalizeSettings(raw: unknown): VaultBrainSettings {
   s.ragTopK = Number.isInteger(k) && k >= 1 && k <= 50 ? k : DEFAULT_SETTINGS.ragTopK;
 
   if (typeof s.micDeviceId !== "string") s.micDeviceId = DEFAULT_SETTINGS.micDeviceId;
+  if (typeof s.customPrompts !== "string") s.customPrompts = DEFAULT_SETTINGS.customPrompts;
 
   return s;
 }

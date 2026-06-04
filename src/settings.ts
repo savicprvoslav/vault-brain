@@ -153,5 +153,17 @@ export class VaultBrainSettingTab extends PluginSettingTab {
         t.inputEl.rows = 10;
         t.inputEl.addClass("vault-brain-template");
       });
+
+    new Setting(containerEl)
+      .setName("Custom prompts")
+      .setDesc('One per line as "Name :: instruction". They appear in the right-click → Vault Brain submenu on a selection.')
+      .addTextArea((t) => {
+        t.setValue(this.plugin.settings.customPrompts).onChange(async (v) => {
+          this.plugin.settings.customPrompts = v;
+          await save();
+        });
+        t.inputEl.rows = 4;
+        t.inputEl.addClass("vault-brain-template");
+      });
   }
 }
