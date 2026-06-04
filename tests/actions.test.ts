@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { ACTIONS, buildActionMessages, getAction } from "../src/core/actions.ts";
+import { ACTIONS, buildActionMessages, getAction, parseCustomPrompts } from "../src/core/actions.ts";
 
 test("summarize inserts below, others replace", () => {
   assert.equal(getAction("summarize").mode, "below");
@@ -27,4 +27,11 @@ test("translate instruction mentions both languages", () => {
   const sys = msgs[0].parts[0].type === "text" ? msgs[0].parts[0].text : "";
   assert.match(sys, /Serbian/i);
   assert.match(sys, /English/i);
+});
+
+test("parseCustomPrompts parses 'Name :: prompt' lines, skips bad ones", () => {
+  const r = parseCustomPrompts("Formalize :: rewrite formally\n\nBad line\nTL;DR :: summarize in one line");
+  assert.equal(r.length, 2);
+  assert.deepEqual(r[0], { name: "Formalize", prompt: "rewrite formally" });
+  assert.deepEqual(r[1], { name: "TL;DR", prompt: "summarize in one line" });
 });

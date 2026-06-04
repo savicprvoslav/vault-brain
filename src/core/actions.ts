@@ -42,3 +42,24 @@ export function buildActionMessages(id: ActionId, selectedText: string): ChatMes
     { role: "user", parts: [{ type: "text", text: selectedText }] },
   ];
 }
+
+export interface CustomPrompt {
+  name: string;
+  prompt: string;
+}
+
+// Parse user "Name :: instruction" lines (one per line) into custom prompts.
+export function parseCustomPrompts(text: string): CustomPrompt[] {
+  return text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+    .map((l): CustomPrompt | null => {
+      const i = l.indexOf("::");
+      if (i < 0) return null;
+      const name = l.slice(0, i).trim();
+      const prompt = l.slice(i + 2).trim();
+      return name && prompt ? { name, prompt } : null;
+    })
+    .filter((x): x is CustomPrompt => x !== null);
+}
