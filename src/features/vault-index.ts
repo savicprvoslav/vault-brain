@@ -1,7 +1,7 @@
 import { TFile, normalizePath } from "obsidian";
 import type VaultBrainPlugin from "../main.ts";
 import { chunkNote } from "../core/chunk.ts";
-import { topK } from "../core/similarity.ts";
+import { topK, cosine, averageVectors } from "../core/similarity.ts";
 import type { RagHit } from "../core/rag-context.ts";
 
 interface IndexedNote {
@@ -93,6 +93,34 @@ export class VaultIndex {
       await this.save();
       return files.length;
     });
+  }
+
+  async related(path: string, k: number): Promise<{ path: string; title: string; score: number; snippet: string }[]> {
+    let qvec: number[] | undefined;
+    const self = this.data[path];
+    if (self && self.chunks.length > 0) {
+      qvec = averageVectors(self.chunks.map((c) => c.vector));
+    } else {
+      const file = this.plugin.app.vault.getAbstractFileByPath(path);
+      if (file instanceof TFile) {
+        const text = await this.plugin.app.vault.cachedRead(file);
+        [qvec] = await this.plugin.provider.embed(this.plugin.settings.embedModel, [text.slice(0, 8000)]);
+      }
+    }
+    if (!qvec || qvec.length === 0) return [];
+    const best = new Map<string, { score: number; snippet: string }>();
+    for (const [p, note] of Object.entries(this.data)) {
+      if (p === path) continue;
+      for (const c of note.chunks) {
+        const s = cosine(qvec, c.vector);
+        const cur = best.get(p);
+        if (!cur || s > cur.score) best.set(p, { score: s, snippet: c.text.replace(/\s+/g, " ").slice(0, 120) });
+      }
+    }
+    return [...best.entries()]
+      .map(([p, v]) => ({ path: p, title: p.replace(/\.md$/, "").split("/").pop() ?? p, score: v.score, snippet: v.snippet }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, k);
   }
 
   async search(query: string, k: number): Promise<RagHit[]> {
