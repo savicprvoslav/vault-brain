@@ -8,6 +8,7 @@ import { VaultBrainQaView, QA_VIEW_TYPE } from "./features/qa-view.ts";
 import { registerVisionCommand } from "./features/vision.ts";
 import { registerVoiceCommands } from "./features/voice.ts";
 import { registerRecorder } from "./features/recorder.ts";
+import { registerQuickActions } from "./features/actions.ts";
 
 export default class VaultBrainPlugin extends Plugin {
   settings!: VaultBrainSettings;
@@ -45,6 +46,7 @@ export default class VaultBrainPlugin extends Plugin {
     registerVisionCommand(this);
     registerVoiceCommands(this);
     registerRecorder(this);
+    registerQuickActions(this);
 
     await this.refreshHealth();
     this.registerInterval(window.setInterval(() => void this.refreshHealth(), 30000));
