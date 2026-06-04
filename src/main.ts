@@ -5,6 +5,7 @@ import { OllamaProvider } from "./core/ollama-provider.ts";
 import { checkHealth } from "./core/health.ts";
 import { renderStatus, StatusView } from "./core/status-bar.ts";
 import { VaultBrainQaView, QA_VIEW_TYPE } from "./features/qa-view.ts";
+import { RelatedNotesView, RELATED_VIEW_TYPE } from "./features/related-view.ts";
 import { registerVisionCommand } from "./features/vision.ts";
 import { registerVoiceCommands } from "./features/voice.ts";
 import { registerRecorder } from "./features/recorder.ts";
@@ -46,6 +47,10 @@ export default class VaultBrainPlugin extends Plugin {
       name: "Open Q&A panel",
       callback: () => void this.activateQaView(),
     });
+
+    this.registerView(RELATED_VIEW_TYPE, (leaf) => new RelatedNotesView(leaf, this));
+    this.addRibbonIcon("git-fork", "Vault Brain: related notes", () => void this.activateLeafView(RELATED_VIEW_TYPE));
+    this.addCommand({ id: "open-related", name: "Open related notes", callback: () => void this.activateLeafView(RELATED_VIEW_TYPE) });
 
     registerVisionCommand(this);
     registerVoiceCommands(this);
@@ -170,6 +175,16 @@ export default class VaultBrainPlugin extends Plugin {
     if (!leaf) {
       leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
       await leaf.setViewState({ type: QA_VIEW_TYPE, active: true });
+    }
+    workspace.revealLeaf(leaf);
+  }
+
+  async activateLeafView(viewType: string): Promise<void> {
+    const { workspace } = this.app;
+    let leaf: WorkspaceLeaf | null = workspace.getLeavesOfType(viewType)[0] ?? null;
+    if (!leaf) {
+      leaf = workspace.getRightLeaf(false) ?? workspace.getLeaf(true);
+      await leaf.setViewState({ type: viewType, active: true });
     }
     workspace.revealLeaf(leaf);
   }

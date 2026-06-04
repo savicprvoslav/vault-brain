@@ -128,3 +128,34 @@
 .vault-brain-qa-apply {
   cursor: pointer;
 }
+
+.vault-brain-related-info {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 8px;
+}
+.vault-brain-related-item {
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.vault-brain-related-item:hover {
+  background: var(--background-modifier-hover);
+}
+.vault-brain-related-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.vault-brain-related-title {
+  font-weight: 600;
+}
+.vault-brain-related-score {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.vault-brain-related-snippet {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 2px;
+}
