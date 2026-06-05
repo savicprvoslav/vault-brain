@@ -12,6 +12,7 @@ import { registerRecorder } from "./features/recorder.ts";
 import { registerQuickActions } from "./features/actions.ts";
 import { registerOrganizeCommands } from "./features/organize.ts";
 import { registerContinueCommand } from "./features/continue.ts";
+import { OnboardingModal, registerOnboarding } from "./features/onboarding.ts";
 import { VaultIndex } from "./features/vault-index.ts";
 import { Activity, renderActivity } from "./core/activity.ts";
 
@@ -61,6 +62,7 @@ export default class VaultBrainPlugin extends Plugin {
     registerQuickActions(this);
     registerOrganizeCommands(this);
     registerContinueCommand(this);
+    registerOnboarding(this);
 
     this.registerEvent(
       this.app.vault.on("create", (f) => {
@@ -78,6 +80,9 @@ export default class VaultBrainPlugin extends Plugin {
         await this.vaultIndex.load();
         await this.vaultIndex.reconcile();
       })();
+    });
+    this.app.workspace.onLayoutReady(() => {
+      if (!this.settings.onboardingDone) new OnboardingModal(this.app, this).open();
     });
     this.registerEvent(this.app.vault.on("modify", (f) => {
       if (f instanceof TFile && f.extension === "md") this.debouncedIndex(f);

@@ -12,6 +12,7 @@ export interface VaultBrainSettings {
   micDeviceId: string;
   customPrompts: string;
   watchFolder: string;
+  onboardingDone: boolean;
 }
 
 export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
@@ -39,6 +40,7 @@ export const DEFAULT_SETTINGS: VaultBrainSettings = {
   micDeviceId: "",
   customPrompts: "",
   watchFolder: "",
+  onboardingDone: false,
 };
 
 // Pure: merge persisted data over defaults, coercing/clamping invalid values.
@@ -67,6 +69,7 @@ export function normalizeSettings(raw: unknown): VaultBrainSettings {
   if (typeof s.micDeviceId !== "string") s.micDeviceId = DEFAULT_SETTINGS.micDeviceId;
   if (typeof s.customPrompts !== "string") s.customPrompts = DEFAULT_SETTINGS.customPrompts;
   if (typeof s.watchFolder !== "string") s.watchFolder = DEFAULT_SETTINGS.watchFolder;
+  s.onboardingDone = Boolean(s.onboardingDone);
 
   return s;
 }

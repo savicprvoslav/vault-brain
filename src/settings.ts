@@ -1,5 +1,6 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import type VaultBrainPlugin from "./main.ts";
+import { OnboardingModal } from "./features/onboarding.ts";
 
 export class VaultBrainSettingTab extends PluginSettingTab {
   constructor(app: App, private plugin: VaultBrainPlugin) {
@@ -11,6 +12,11 @@ export class VaultBrainSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl).setName("Vault Brain — local AI").setHeading();
+
+    new Setting(containerEl)
+      .setName("Setup & health check")
+      .setDesc("Re-run the guided setup — verify Ollama and pull missing models.")
+      .addButton((b) => b.setButtonText("Open setup").onClick(() => new OnboardingModal(this.app, this.plugin).open()));
 
     const save = async () => this.plugin.saveSettings();
 

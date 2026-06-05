@@ -206,3 +206,30 @@
   text-decoration: line-through;
   opacity: 0.75;
 }
+
+.vault-brain-setup-step {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+}
+.vault-brain-setup-fix {
+  margin: 2px 0 10px 26px;
+  font-size: 13px;
+}
+.vault-brain-setup-fix code {
+  margin-right: 6px;
+}
+.vault-brain-setup-prog {
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+.vault-brain-setup-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.vault-brain-setup-hint {
+  color: var(--text-muted);
+  font-size: 13px;
+}
