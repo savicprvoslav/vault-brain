@@ -20,4 +20,5 @@ export interface LlmProvider {
   listModels(): Promise<string[]>;
   showCapabilities(model: string): Promise<string[]>;
   embed(model: string, texts: string[]): Promise<number[][]>;
+  pullModel(model: string, onProgress: (status: string, pct: number) => void): Promise<void>;
 }

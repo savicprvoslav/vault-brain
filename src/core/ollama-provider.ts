@@ -144,4 +144,35 @@ export class OllamaProvider implements LlmProvider {
     const json = (await res.json()) as { embeddings?: number[][] };
     return json.embeddings ?? [];
   }
+
+  async pullModel(model: string, onProgress: (status: string, pct: number) => void): Promise<void> {
+    const res = await this.fetchFn(`${this.base()}/api/pull`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, stream: true }),
+    });
+    if (!res.ok || !res.body) throw new Error(`Ollama returned HTTP ${res.status}`);
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let j: { status?: string; total?: number; completed?: number; error?: string };
+        try {
+          j = JSON.parse(line);
+        } catch {
+          continue;
+        }
+        if (j.error) throw new Error(j.error);
+        const pct = j.total && j.completed ? Math.round((j.completed / j.total) * 100) : 0;
+        onProgress(j.status ?? "", pct);
+      }
+    }
+  }
 }

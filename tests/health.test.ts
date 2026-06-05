@@ -9,6 +9,7 @@ function stub(over: Partial<LlmProvider>): LlmProvider {
     listModels: async () => [],
     showCapabilities: async () => [],
     embed: async () => [],
+    pullModel: async () => {},
     ...over,
   };
 }
