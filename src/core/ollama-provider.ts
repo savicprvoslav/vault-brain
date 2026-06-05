@@ -32,6 +32,8 @@ export function buildChatRequest(model: string, messages: ChatMessage[], stream:
   };
 }
 
+interface SseChunk { choices?: { delta?: { content?: string } }[] }
+
 // Pure: parse one SSE line. Returns delta text, "" for non-content lines, or null on [DONE].
 export function parseSseLine(line: string): string | null {
   const trimmed = line.trim();
@@ -39,7 +41,7 @@ export function parseSseLine(line: string): string | null {
   const data = trimmed.slice(5).trim();
   if (data === "[DONE]") return null;
   try {
-    const json = JSON.parse(data);
+    const json = JSON.parse(data) as SseChunk;
     return json.choices?.[0]?.delta?.content ?? "";
   } catch {
     return "";
@@ -55,13 +57,14 @@ export interface OllamaConfig {
 }
 
 export class OllamaProvider implements LlmProvider {
-  // fetchFn is injectable for testing. The default MUST be bound to the global:
-  // in Chromium (Obsidian) `fetch` throws "Illegal invocation" when called as a
-  // method of another object (e.g. `this.fetchFn(...)`). Node's fetch doesn't enforce
-  // this, which is why unit tests don't catch it — only runtime in Obsidian does.
+  // fetchFn is injectable for testing. The default wraps the global fetch unbound,
+  // which works in both Node tests and the Obsidian renderer and avoids Chromium's
+  // "Illegal invocation" error that occurs when fetch is called as a method of
+  // another object (e.g. `this.fetchFn(...)`). Do NOT use window/globalThis here —
+  // this file must stay Node-pure for unit testing.
   constructor(
     private cfg: OllamaConfig,
-    private fetchFn: typeof fetch = globalThis.fetch.bind(globalThis) as typeof fetch,
+    private fetchFn: typeof fetch = (...args: Parameters<typeof fetch>) => fetch(...args),
   ) {}
 
   private base(): string {
@@ -165,7 +168,7 @@ export class OllamaProvider implements LlmProvider {
         if (!line.trim()) continue;
         let j: { status?: string; total?: number; completed?: number; error?: string };
         try {
-          j = JSON.parse(line);
+          j = JSON.parse(line) as { status?: string; total?: number; completed?: number; error?: string };
         } catch {
           continue;
         }

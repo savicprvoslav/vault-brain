@@ -81,11 +81,14 @@ async function openAndReveal(plugin: VaultBrainPlugin, file: TFile): Promise<voi
   }
 }
 
+interface DailyNotesOptions { format?: string; folder?: string }
+interface DailyNotesPlugin { instance?: { options?: DailyNotesOptions } }
+interface AppWithInternal { internalPlugins?: { getPluginById(id: string): DailyNotesPlugin | undefined } }
+
 async function resolveDailyNote(plugin: VaultBrainPlugin): Promise<TFile> {
-  const dn = (plugin.app as any).internalPlugins?.getPluginById?.("daily-notes");
-  const opts = dn?.instance?.options ?? {};
-  const format: string = opts.format || "YYYY-MM-DD";
-  const folder: string = (opts.folder || "").trim();
+  const dn = (plugin.app as unknown as AppWithInternal).internalPlugins?.getPluginById("daily-notes");
+  const format: string = dn?.instance?.options?.format || "YYYY-MM-DD";
+  const folder: string = (dn?.instance?.options?.folder || "").trim();
   const name = now().format(format);
   const path = folder ? `${folder}/${name}.md` : `${name}.md`;
   const existing = plugin.app.vault.getAbstractFileByPath(path);

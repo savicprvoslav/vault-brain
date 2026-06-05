@@ -11,8 +11,6 @@ export class VaultBrainSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl).setName("Vault Brain — local AI").setHeading();
-
     new Setting(containerEl)
       .setName("Setup & health check")
       .setDesc("Re-run the guided setup — verify Ollama and pull missing models.")
@@ -47,34 +45,36 @@ export class VaultBrainSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Model")
       .setDesc("Pick an installed model. gemma4:12b = full multimodal (voice + vision), bigger & smarter. gemma4:latest (8B) = faster.")
-      .addDropdown(async (d) => {
-        let models: string[] = [];
-        try {
-          models = await this.plugin.provider.listModels();
-        } catch {
-          /* Ollama offline */
-        }
-        if (models.length === 0) {
-          // Can't reach Ollama — keep the saved value selectable so it isn't lost.
-          const saved = this.plugin.settings.model || "gemma4:12b";
-          d.addOption(saved, saved);
-          d.setValue(saved);
-        } else {
-          for (const m of models) d.addOption(m, m);
-          if (models.includes(this.plugin.settings.model)) {
-            d.setValue(this.plugin.settings.model);
-          } else {
-            // Saved model is no longer installed — heal to an installed chat model.
-            const fallback = models.find((m) => m.startsWith("gemma4:")) ?? models[0];
-            d.setValue(fallback);
-            this.plugin.settings.model = fallback;
-            await save();
+      .addDropdown((d) => {
+        void (async () => {
+          let models: string[] = [];
+          try {
+            models = await this.plugin.provider.listModels();
+          } catch {
+            /* Ollama offline */
           }
-        }
-        d.onChange(async (v) => {
-          this.plugin.settings.model = v;
-          await save();
-        });
+          if (models.length === 0) {
+            // Can't reach Ollama — keep the saved value selectable so it isn't lost.
+            const saved = this.plugin.settings.model || "gemma4:12b";
+            d.addOption(saved, saved);
+            d.setValue(saved);
+          } else {
+            for (const m of models) d.addOption(m, m);
+            if (models.includes(this.plugin.settings.model)) {
+              d.setValue(this.plugin.settings.model);
+            } else {
+              // Saved model is no longer installed — heal to an installed chat model.
+              const fallback = models.find((m) => m.startsWith("gemma4:")) ?? models[0];
+              d.setValue(fallback);
+              this.plugin.settings.model = fallback;
+              await save();
+            }
+          }
+          d.onChange(async (v) => {
+            this.plugin.settings.model = v;
+            await save();
+          });
+        })();
       });
 
     new Setting(containerEl)
@@ -117,21 +117,23 @@ export class VaultBrainSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Microphone")
       .setDesc("Device used for in-app recording. Device names appear after you grant mic access once.")
-      .addDropdown(async (d) => {
-        d.addOption("", "System default");
-        try {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          devices
-            .filter((dev) => dev.kind === "audioinput")
-            .forEach((dev, i) => d.addOption(dev.deviceId, dev.label || `Microphone ${i + 1}`));
-        } catch {
-          /* enumeration may fail before permission is granted */
-        }
-        d.setValue(this.plugin.settings.micDeviceId);
-        d.onChange(async (v) => {
-          this.plugin.settings.micDeviceId = v;
-          await save();
-        });
+      .addDropdown((d) => {
+        void (async () => {
+          d.addOption("", "System default");
+          try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            devices
+              .filter((dev) => dev.kind === "audioinput")
+              .forEach((dev, i) => d.addOption(dev.deviceId, dev.label || `Microphone ${i + 1}`));
+          } catch {
+            /* enumeration may fail before permission is granted */
+          }
+          d.setValue(this.plugin.settings.micDeviceId);
+          d.onChange(async (v) => {
+            this.plugin.settings.micDeviceId = v;
+            await save();
+          });
+        })();
       });
 
     new Setting(containerEl)

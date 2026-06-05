@@ -45,7 +45,7 @@ async function extractPdf(plugin: VaultBrainPlugin, file: TFile): Promise<void> 
       notice.setMessage(`Vault Brain: OCR page ${i}/${maxPages}…`);
       const page = await pdf.getPage(i);
       const viewport = page.getViewport({ scale: 2 });
-      const canvas = document.createElement("canvas");
+      const canvas = activeDocument.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       const ctx = canvas.getContext("2d");

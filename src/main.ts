@@ -25,7 +25,11 @@ export default class VaultBrainPlugin extends Plugin {
   private statusEl!: HTMLElement;
   private statusView: StatusView | null = null;
 
-  async onload() {
+  onload(): void {
+    void this.init();
+  }
+
+  private async init(): Promise<void> {
     await this.loadSettings();
     this.rebuildProvider();
     this.activity = new Activity();
@@ -114,6 +118,7 @@ export default class VaultBrainPlugin extends Plugin {
     });
 
     const activityEl = this.addStatusBarItem();
+    activityEl.addClass("vault-brain-activity");
     const updateActivity = () => {
       const v = renderActivity(this.activity.runningCount(), this.activity.current()?.label ?? null);
       activityEl.setText(v.text);
@@ -122,7 +127,6 @@ export default class VaultBrainPlugin extends Plugin {
     };
     this.activity.onChange(updateActivity);
     updateActivity();
-    activityEl.style.cursor = "pointer";
     this.registerDomEvent(activityEl, "click", (e: MouseEvent) => {
       const menu = new Menu();
       const recent = this.activity.recent();

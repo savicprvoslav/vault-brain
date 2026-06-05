@@ -120,7 +120,7 @@ export function registerRecorder(plugin: VaultBrainPlugin): void {
   const showBar = () => {
     finishing = false;
     elapsed = 0;
-    bar = document.body.createDiv({ cls: "vault-brain-rec-bar" });
+    bar = activeDocument.body.createDiv({ cls: "vault-brain-rec-bar" });
     bar.createSpan({ cls: "vault-brain-rec-dot", text: "🔴" });
     timerEl = bar.createSpan({ cls: "vault-brain-rec-timer", text: "0:00" });
     pauseBtn = bar.createEl("button", { text: "⏸ Pause" });

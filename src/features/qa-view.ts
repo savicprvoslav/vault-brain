@@ -77,8 +77,8 @@ export class VaultBrainQaView extends ItemView {
     this.chipEl = root.createDiv({ cls: "vault-brain-qa-chip" });
     this.chipEl.hide();
     this.messagesEl = root.createDiv({ cls: "vault-brain-qa-messages" });
-    this.messagesEl.addEventListener("click", (e) => {
-      const link = (e.target as HTMLElement).closest("a.internal-link") as HTMLElement | null;
+    this.registerDomEvent(this.messagesEl, "click", (e) => {
+      const link = (e.target as HTMLElement).closest("a.internal-link");
       if (link) {
         e.preventDefault();
         const href = link.getAttribute("data-href") ?? link.getAttribute("href") ?? "";
@@ -97,7 +97,7 @@ export class VaultBrainQaView extends ItemView {
 
     this.sendBtn.onclick = () => void this.onSend();
     this.stopBtn.onclick = () => this.abort?.abort();
-    this.inputEl.addEventListener("keydown", (e) => {
+    this.registerDomEvent(this.inputEl, "keydown", (e) => {
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         void this.onSend();
@@ -220,7 +220,9 @@ export class VaultBrainQaView extends ItemView {
         return;
       }
     } else {
-      const file = this.app.workspace.getActiveFile() as TFile;
+      const activeFile = this.app.workspace.getActiveFile();
+      if (!(activeFile instanceof TFile)) return;
+      const file = activeFile;
       const { active, linked } = await this.gatherNotes(file);
       const extra: NoteDoc[] = [];
       for (const f of this.manualContext) {

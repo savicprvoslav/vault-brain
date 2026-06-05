@@ -2,6 +2,9 @@
 .vault-brain-status {
   cursor: pointer;
 }
+.vault-brain-activity {
+  cursor: pointer;
+}
 .vault-brain-template {
   width: 100%;
 }

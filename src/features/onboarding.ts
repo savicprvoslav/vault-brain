@@ -7,9 +7,9 @@ export class OnboardingModal extends Modal {
     super(app);
   }
 
-  async onOpen(): Promise<void> {
+  onOpen(): void {
     this.titleEl.setText("Vault Brain — Setup");
-    await this.render();
+    void this.render();
   }
 
   onClose(): void {
