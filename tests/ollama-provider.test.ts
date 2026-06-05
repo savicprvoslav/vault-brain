@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { partToOpenAi, buildChatRequest, parseSseLine, OllamaProvider } from "../src/core/ollama-provider.ts";
+import { partToOpenAi, buildChatRequest, parseSseLine, parseSseDelta, OllamaProvider } from "../src/core/ollama-provider.ts";
 
 test("partToOpenAi maps text", () => {
   assert.deepEqual(partToOpenAi({ type: "text", text: "hi" }), { type: "text", text: "hi" });
@@ -95,4 +95,37 @@ test("chatStream throws on non-OK response", async () => {
     () => p.chatStream([{ role: "user", parts: [{ type: "text", text: "hi" }] }], { signal: new AbortController().signal, onToken: () => {} }),
     /HTTP 500/
   );
+});
+
+test("parseSseDelta separates reasoning from content", () => {
+  assert.deepEqual(
+    parseSseDelta('data: {"choices":[{"delta":{"content":"","reasoning":"think"}}]}'),
+    { content: "", reasoning: "think" }
+  );
+  assert.deepEqual(
+    parseSseDelta('data: {"choices":[{"delta":{"content":"ans"}}]}'),
+    { content: "ans", reasoning: "" }
+  );
+  assert.equal(parseSseDelta("data: [DONE]"), null);
+});
+
+test("chatStream routes reasoning to onThinking, content to onToken, returns only content", async () => {
+  const chunks = [
+    'data: {"choices":[{"delta":{"content":"","reasoning":"Let me "}}]}\n',
+    'data: {"choices":[{"delta":{"content":"","reasoning":"think"}}]}\n',
+    'data: {"choices":[{"delta":{"content":"Hello"}}]}\n',
+    'data: {"choices":[{"delta":{"content":" world"}}]}\n',
+    "data: [DONE]\n",
+  ];
+  const fakeFetch = (async () => streamResponse(chunks)) as unknown as typeof fetch;
+  const p = new OllamaProvider({ host: "http://x", port: 1, model: "m" }, fakeFetch);
+  const toks: string[] = [];
+  const think: string[] = [];
+  const out = await p.chatStream(
+    [{ role: "user", parts: [{ type: "text", text: "hi" }] }],
+    { signal: new AbortController().signal, onToken: (t) => toks.push(t), onThinking: (t) => think.push(t) }
+  );
+  assert.equal(out, "Hello world");
+  assert.deepEqual(toks, ["Hello", " world"]);
+  assert.deepEqual(think, ["Let me ", "think"]);
 });

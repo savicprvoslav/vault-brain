@@ -12,6 +12,9 @@ export interface ChatMessage {
 export interface ChatStreamOpts {
   signal: AbortSignal;
   onToken: (token: string) => void;
+  // Optional: receives chain-of-thought tokens from "thinking" models (e.g. gemma4:12b),
+  // streamed separately from the answer. Use it to drive a live "thinking…" indicator.
+  onThinking?: (token: string) => void;
 }
 
 // Decouples features from Ollama specifics; future MLX/other = new implementation.

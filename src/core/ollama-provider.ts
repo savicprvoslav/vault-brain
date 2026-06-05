@@ -32,20 +32,32 @@ export function buildChatRequest(model: string, messages: ChatMessage[], stream:
   };
 }
 
-interface SseChunk { choices?: { delta?: { content?: string } }[] }
+interface SseChunk { choices?: { delta?: { content?: string; reasoning?: string } }[] }
 
-// Pure: parse one SSE line. Returns delta text, "" for non-content lines, or null on [DONE].
-export function parseSseLine(line: string): string | null {
+export interface SseDelta {
+  content: string; // the answer
+  reasoning: string; // chain-of-thought from "thinking" models (e.g. gemma4:12b)
+}
+
+// Pure: parse one SSE line into its content + reasoning deltas. Returns null on [DONE].
+export function parseSseDelta(line: string): SseDelta | null {
   const trimmed = line.trim();
-  if (!trimmed.startsWith("data:")) return "";
+  if (!trimmed.startsWith("data:")) return { content: "", reasoning: "" };
   const data = trimmed.slice(5).trim();
   if (data === "[DONE]") return null;
   try {
     const json = JSON.parse(data) as SseChunk;
-    return json.choices?.[0]?.delta?.content ?? "";
+    const delta = json.choices?.[0]?.delta;
+    return { content: delta?.content ?? "", reasoning: delta?.reasoning ?? "" };
   } catch {
-    return "";
+    return { content: "", reasoning: "" };
   }
+}
+
+// Backward-compatible: just the content delta ("" for non-content, null on [DONE]).
+export function parseSseLine(line: string): string | null {
+  const d = parseSseDelta(line);
+  return d === null ? null : d.content;
 }
 
 export interface OllamaConfig {
@@ -53,7 +65,7 @@ export interface OllamaConfig {
   port: number; // e.g. 11434
   model: string; // e.g. "gemma4:12b"
   requestTimeoutMs?: number; // listModels/showCapabilities (default 8000)
-  chatTimeoutMs?: number; // overall cap for a streaming chat (default 120000)
+  idleTimeoutMs?: number; // abort a stream only after this long with NO new tokens (default 120000)
 }
 
 export class OllamaProvider implements LlmProvider {
@@ -72,46 +84,69 @@ export class OllamaProvider implements LlmProvider {
   }
 
   async chatStream(messages: ChatMessage[], opts: ChatStreamOpts): Promise<string> {
+    // Abort only after idleMs with NO new bytes. This keeps long "thinking" responses
+    // (gemma4:12b streams a chain-of-thought before the answer) alive as long as tokens
+    // keep flowing, while still catching a genuine hang. The clock is reset on every read.
+    const idleMs = this.cfg.idleTimeoutMs ?? 120000;
+    const idle = new AbortController();
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    const armIdle = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(
+        () => idle.abort(new DOMException("Ollama stopped responding (idle timeout)", "TimeoutError")),
+        idleMs,
+      );
+    };
     // AbortSignal.any is available in Node 18.17+/browsers but not typed in TS 5.4's DOM lib.
     const signal = (AbortSignal as typeof AbortSignal & { any(signals: AbortSignal[]): AbortSignal }).any([
       opts.signal,
-      AbortSignal.timeout(this.cfg.chatTimeoutMs ?? 120000),
+      idle.signal,
     ]);
-    const res = await this.fetchFn(`${this.base()}/v1/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildChatRequest(this.cfg.model, messages, true)),
-      signal,
-    });
-    if (!res.ok || !res.body) {
-      throw new Error(`Ollama returned HTTP ${res.status}`);
-    }
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    let full = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        const delta = parseSseLine(line);
-        if (delta === null) return full; // [DONE]
-        if (delta) {
-          full += delta;
-          opts.onToken(delta);
+    armIdle();
+    try {
+      const res = await this.fetchFn(`${this.base()}/v1/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildChatRequest(this.cfg.model, messages, true)),
+        signal,
+      });
+      if (!res.ok || !res.body) {
+        throw new Error(`Ollama returned HTTP ${res.status}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let full = "";
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        armIdle(); // new bytes → reset the idle clock
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          const delta = parseSseDelta(line);
+          if (delta === null) return full; // [DONE]
+          if (delta.reasoning) opts.onThinking?.(delta.reasoning);
+          if (delta.content) {
+            full += delta.content;
+            opts.onToken(delta.content);
+          }
         }
       }
+      // Flush a complete-but-unterminated final line (stream ended without [DONE]).
+      const tail = parseSseDelta(buffer);
+      if (tail) {
+        if (tail.reasoning) opts.onThinking?.(tail.reasoning);
+        if (tail.content) {
+          full += tail.content;
+          opts.onToken(tail.content);
+        }
+      }
+      return full;
+    } finally {
+      if (idleTimer) clearTimeout(idleTimer);
     }
-    // Flush a complete-but-unterminated final line (stream ended without [DONE]).
-    const tail = parseSseLine(buffer);
-    if (tail) {
-      full += tail;
-      opts.onToken(tail);
-    }
-    return full;
   }
 
   async listModels(): Promise<string[]> {

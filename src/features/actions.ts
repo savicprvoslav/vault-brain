@@ -52,12 +52,19 @@ async function runAction(
     return;
   }
   const notice = new Notice(`Vault Brain: ${action.label}…`, 0);
+  let phase = "";
+  const setPhase = (p: string) => {
+    if (phase === p) return;
+    phase = p;
+    notice.setMessage(`Vault Brain: ${action.label} — ${p}…`);
+  };
   let out = "";
   try {
     await plugin.activity.run(action.label, () =>
       plugin.provider.chatStream(buildActionMessages(action.id, selection), {
-        signal: AbortSignal.timeout(120000),
-        onToken: (t) => { out += t; },
+        signal: AbortSignal.timeout(600000),
+        onThinking: () => setPhase("thinking"),
+        onToken: (t) => { setPhase("writing"); out += t; },
       })
     );
   } catch (e) {
@@ -85,6 +92,12 @@ async function runCustom(plugin: VaultBrainPlugin, editor: Editor, name: string,
     return;
   }
   const notice = new Notice(`Vault Brain: ${name}…`, 0);
+  let phase = "";
+  const setPhase = (p: string) => {
+    if (phase === p) return;
+    phase = p;
+    notice.setMessage(`Vault Brain: ${name} — ${p}…`);
+  };
   let out = "";
   try {
     await plugin.activity.run(name, () =>
@@ -93,7 +106,11 @@ async function runCustom(plugin: VaultBrainPlugin, editor: Editor, name: string,
           { role: "system", parts: [{ type: "text", text: `${prompt}\nOutput ONLY the result, no preamble.` }] },
           { role: "user", parts: [{ type: "text", text: selection }] },
         ],
-        { signal: AbortSignal.timeout(120000), onToken: (t) => { out += t; } }
+        {
+          signal: AbortSignal.timeout(600000),
+          onThinking: () => setPhase("thinking"),
+          onToken: (t) => { setPhase("writing"); out += t; },
+        }
       )
     );
   } catch (e) {
@@ -103,5 +120,9 @@ async function runCustom(plugin: VaultBrainPlugin, editor: Editor, name: string,
   }
   notice.hide();
   const result = out.trim();
-  if (result) editor.replaceSelection(result);
+  if (!result) {
+    new Notice("Vault Brain: no result produced.");
+    return;
+  }
+  editor.replaceSelection(result);
 }

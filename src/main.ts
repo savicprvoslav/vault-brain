@@ -216,7 +216,8 @@ export default class VaultBrainPlugin extends Plugin {
       await this.provider.chatStream(
         [{ role: "user", parts: [{ type: "text", text: "Say hello in 5 words." }] }],
         {
-          signal: AbortSignal.timeout(30000),
+          signal: AbortSignal.timeout(120000),
+          onThinking: () => notice.setMessage("Vault Brain: thinking…"),
           onToken: (t) => {
             acc += t;
             notice.setMessage("Vault Brain: " + acc);

@@ -24,7 +24,8 @@ async function suggestTags(plugin: VaultBrainPlugin, file: TFile | null): Promis
   try {
     await plugin.activity.run("Suggesting tags", () =>
       plugin.provider.chatStream(buildTagMessages(text.slice(0, 8000)), {
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(600000),
+        onThinking: () => notice.setMessage("Vault Brain: suggesting tags — thinking…"),
         onToken: (t) => { out += t; },
       })
     );

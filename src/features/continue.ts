@@ -23,7 +23,7 @@ async function continueWriting(plugin: VaultBrainPlugin, editor: Editor): Promis
   try {
     await plugin.activity.run("Continuing writing", () =>
       plugin.provider.chatStream(buildContinueMessages(context), {
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(600000),
         onToken: (t) => {
           acc += t;
           editor.replaceRange(acc, editor.offsetToPos(startOffset), editor.offsetToPos(startOffset + prevLen));

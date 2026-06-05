@@ -49,7 +49,8 @@ async function runImageExtraction(plugin: VaultBrainPlugin, editor: Editor): Pro
   try {
     await plugin.activity.run("Extracting image text", () =>
       plugin.provider.chatStream(messages, {
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(600000),
+        onThinking: () => notice.setMessage("Vault Brain: reading image — thinking…"),
         onToken: (t) => { out += t; },
       })
     );

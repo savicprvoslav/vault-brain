@@ -97,7 +97,11 @@ export class OnboardingModal extends Modal {
       let out = "";
       await this.plugin.provider.chatStream(
         [{ role: "user", parts: [{ type: "text", text: "Say hello in 3 words." }] }],
-        { signal: AbortSignal.timeout(30000), onToken: (t) => { out += t; } }
+        {
+          signal: AbortSignal.timeout(120000),
+          onThinking: () => btn.setText("Thinking…"),
+          onToken: (t) => { out += t; btn.setText("Writing…"); },
+        }
       );
       new Notice("✅ Vault Brain works — " + out.trim());
       btn.setText("✓ Working");
