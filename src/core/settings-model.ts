@@ -30,7 +30,7 @@ export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
 export const DEFAULT_SETTINGS: VaultBrainSettings = {
   host: "http://127.0.0.1",
   port: 11434,
-  model: "gemma4:latest",
+  model: "gemma4:12b",
   outputTemplate: DEFAULT_TEMPLATE,
   dailyNoteMode: "append",
   contextTokenCap: 8000,

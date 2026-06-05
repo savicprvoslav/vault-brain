@@ -44,22 +44,22 @@ Answers render as Markdown with clickable `[[links]]`, a copy button, and modern
 ## Requirements
 
 - **Obsidian 1.5.0+ on desktop** (macOS / Windows / Linux). Desktop-only — local inference isn't available on mobile.
-- **[Ollama](https://ollama.com)** installed and running.
-- **`gemma4:latest`** (8B multimodal — audio + vision + text) and, for vault search, **`nomic-embed-text`**.
-- ~16 GB RAM recommended (the model is ~10 GB). Apple Silicon or comparable.
+- **[Ollama](https://ollama.com) 0.30.5+** installed and running.
+- **`gemma4:12b`** (multimodal — audio + vision + text) and, for vault search, **`nomic-embed-text`**.
+- ~16 GB RAM recommended (the 12B model is ~7.6 GB on disk). Apple Silicon or comparable.
 
 ## Setup
 
 1. **Install Ollama** ([ollama.com](https://ollama.com)) and make sure it's running (`ollama serve`, or open the app).
 2. **Pull the models:**
    ```bash
-   ollama pull gemma4:latest
+   ollama pull gemma4:12b
    ollama pull nomic-embed-text   # for whole-vault search
    ```
 3. **Install the plugin** (until it's in the community directory): copy `main.js`, `manifest.json`, and `styles.css` into `<your-vault>/.obsidian/plugins/vault-brain/`, then enable **Vault Brain** under Settings → Community plugins.
 4. Open Settings → **Vault Brain** — defaults work out of the box; the status bar should show **🟢 Vault Brain**.
 
-> **About the model:** `gemma4:latest` (8B) is the only Gemma 4 build in Ollama today that supports **audio and vision**, so the voice and image features need it. The 12B build (`gemma4:12b-mlx`) is currently text-only via Ollama's MLX runtime; you can point the model setting at it for text-only use, but leave it on `gemma4:latest` for the full feature set.
+> **About the model:** `gemma4:12b` is the recommended build — it's **fully multimodal** (audio + vision + text), so voice, image OCR, and chat all run on one model. It needs **Ollama 0.30.5+** (older versions return a `412` when pulling it). Want something lighter? The 8B **`gemma4:latest`** is also fully multimodal and faster (just less capable) — pick it in Settings → Vault Brain → **Model**. Avoid **`gemma4:12b-mlx`**: that MLX build is **text-only** (no voice or vision).
 
 ## Commands
 
@@ -70,7 +70,7 @@ Voice memo → note · Start/Stop voice recording · Process as meeting · Extra
 | Setting | Default | Notes |
 |---|---|---|
 | Ollama host / port | `http://127.0.0.1` / `11434` | Localhost only; non-local triggers a privacy warning |
-| Model | `gemma4:latest` | 8B multimodal |
+| Model | `gemma4:12b` | multimodal (audio + vision + text); pick any installed model from the dropdown |
 | Embedding model | `nomic-embed-text:latest` | for whole-vault search |
 | Vault search results (top-K) | 6 | chunks retrieved per question |
 | Daily-note mode | Append to today's note | or "new note per memo" |

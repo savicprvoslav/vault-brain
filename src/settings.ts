@@ -56,7 +56,7 @@ export class VaultBrainSettingTab extends PluginSettingTab {
         }
         if (models.length === 0) {
           // Can't reach Ollama — keep the saved value selectable so it isn't lost.
-          const saved = this.plugin.settings.model || "gemma4:latest";
+          const saved = this.plugin.settings.model || "gemma4:12b";
           d.addOption(saved, saved);
           d.setValue(saved);
         } else {

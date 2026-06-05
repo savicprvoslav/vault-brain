@@ -37,7 +37,7 @@ Tools: macOS screen recording → [Gifski](https://gif.ski/) or Kap. Keep each <
 >
 > **Private by design:** exactly one network call site, localhost-only, with a non-loopback warning. Turn Wi-Fi off and voice still works.
 >
-> **Requirements:** desktop, [Ollama](https://ollama.com), and `gemma4:latest` (+ `nomic-embed-text` for search). A **guided setup** detects everything and **one-click-pulls** missing models for you.
+> **Requirements:** desktop, [Ollama](https://ollama.com) 0.30.5+, and `gemma4:12b` (+ `nomic-embed-text` for search). A **guided setup** detects everything and **one-click-pulls** missing models for you.
 >
 > Repo + README: `github.com/savicprvoslav/vault-brain`. Feedback very welcome — especially on Serbian/other-language voice and on hardware/setup friction.
 >
@@ -75,7 +75,7 @@ Post mid-week morning ET. Reply to every comment for the first few hours (drives
 > - 🔗 Live related-notes sidebar
 > - ✍️ Selection actions, custom prompts, continue-writing, auto-tag, auto-link
 > - 🧠 Activity tracker · guided setup with one-click model pull · single auditable egress
-> Requires desktop Obsidian 1.5+, Ollama, `gemma4:latest` (+ `nomic-embed-text`).
+> Requires desktop Obsidian 1.5+, Ollama 0.30.5+, `gemma4:12b` (+ `nomic-embed-text`).
 
 ---
 

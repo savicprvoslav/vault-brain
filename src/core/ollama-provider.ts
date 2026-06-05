@@ -49,7 +49,7 @@ export function parseSseLine(line: string): string | null {
 export interface OllamaConfig {
   host: string; // e.g. "http://127.0.0.1"
   port: number; // e.g. 11434
-  model: string; // e.g. "gemma4:latest"
+  model: string; // e.g. "gemma4:12b"
   requestTimeoutMs?: number; // listModels/showCapabilities (default 8000)
   chatTimeoutMs?: number; // overall cap for a streaming chat (default 120000)
 }
