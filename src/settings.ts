@@ -46,13 +46,27 @@ export class VaultBrainSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Model")
-      .setDesc("gemma4:latest (8B) supports audio + vision. The text-only gemma4:12b-mlx may be used once multimodal features are not needed.")
-      .addText((t) =>
-        t.setValue(this.plugin.settings.model).onChange(async (v) => {
-          this.plugin.settings.model = v.trim();
+      .setDesc("Pick an installed model. gemma4:12b = full multimodal (voice + vision), bigger & smarter. gemma4:latest (8B) = faster.")
+      .addDropdown(async (d) => {
+        let models: string[] = [];
+        try {
+          models = await this.plugin.provider.listModels();
+        } catch {
+          /* Ollama offline — fall back to the saved value */
+        }
+        if (this.plugin.settings.model && !models.includes(this.plugin.settings.model)) {
+          models.unshift(this.plugin.settings.model);
+        }
+        if (models.length === 0) {
+          models = [this.plugin.settings.model || "gemma4:latest"];
+        }
+        for (const m of models) d.addOption(m, m);
+        d.setValue(this.plugin.settings.model);
+        d.onChange(async (v) => {
+          this.plugin.settings.model = v;
           await save();
-        })
-      );
+        });
+      });
 
     new Setting(containerEl)
       .setName("Embedding model")
