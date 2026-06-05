@@ -4,6 +4,15 @@ All notable changes to Vault Brain are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-06-05
+
+### Fixed
+- **Thinking models** (e.g. `gemma4:12b`): the model's chain-of-thought is now shown as a live
+  "thinking…" indicator and the final answer is captured correctly — selection actions, voice/vision,
+  and the setup test buttons no longer appear to hang.
+- Code-quality pass for the community-directory review: CSS-class styling (no inline styles), settings
+  headings, stronger typing, popout-window compatibility, and async lifecycle.
+
 ## [0.1.0] — 2026-06-05
 
 First public release — fully-local, multimodal AI for Obsidian via **Gemma 4** on **Ollama**.
@@ -30,4 +39,5 @@ First public release — fully-local, multimodal AI for Obsidian via **Gemma 4**
 - Desktop Obsidian 1.5.0+, [Ollama](https://ollama.com) 0.30.5+, `gemma4:12b` (+ `nomic-embed-text`
   for whole-vault search).
 
+[0.1.1]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.1
 [0.1.0]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.0
