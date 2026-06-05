@@ -122,6 +122,19 @@ export class VaultBrainSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
+      .setName("PDF max pages")
+      .setDesc("How many pages to OCR when extracting text from a PDF.")
+      .addText((t) =>
+        t.setValue(String(this.plugin.settings.pdfMaxPages)).onChange(async (v) => {
+          const n = Number(v);
+          if (Number.isInteger(n) && n >= 1) {
+            this.plugin.settings.pdfMaxPages = n;
+            await save();
+          }
+        })
+      );
+
+    new Setting(containerEl)
       .setName("Output language")
       .addDropdown((d) =>
         d

@@ -13,6 +13,7 @@ export interface VaultBrainSettings {
   customPrompts: string;
   watchFolder: string;
   onboardingDone: boolean;
+  pdfMaxPages: number;
 }
 
 export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
@@ -41,6 +42,7 @@ export const DEFAULT_SETTINGS: VaultBrainSettings = {
   customPrompts: "",
   watchFolder: "",
   onboardingDone: false,
+  pdfMaxPages: 10,
 };
 
 // Pure: merge persisted data over defaults, coercing/clamping invalid values.
@@ -70,6 +72,8 @@ export function normalizeSettings(raw: unknown): VaultBrainSettings {
   if (typeof s.customPrompts !== "string") s.customPrompts = DEFAULT_SETTINGS.customPrompts;
   if (typeof s.watchFolder !== "string") s.watchFolder = DEFAULT_SETTINGS.watchFolder;
   s.onboardingDone = Boolean(s.onboardingDone);
+
+  const pmp = Number(s.pdfMaxPages); s.pdfMaxPages = Number.isInteger(pmp) && pmp >= 1 && pmp <= 100 ? pmp : DEFAULT_SETTINGS.pdfMaxPages;
 
   return s;
 }

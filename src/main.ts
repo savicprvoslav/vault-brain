@@ -13,6 +13,7 @@ import { registerQuickActions } from "./features/actions.ts";
 import { registerOrganizeCommands } from "./features/organize.ts";
 import { registerContinueCommand } from "./features/continue.ts";
 import { OnboardingModal, registerOnboarding } from "./features/onboarding.ts";
+import { registerPdfCommand } from "./features/pdf.ts";
 import { VaultIndex } from "./features/vault-index.ts";
 import { Activity, renderActivity } from "./core/activity.ts";
 
@@ -63,6 +64,7 @@ export default class VaultBrainPlugin extends Plugin {
     registerOrganizeCommands(this);
     registerContinueCommand(this);
     registerOnboarding(this);
+    registerPdfCommand(this);
 
     this.registerEvent(
       this.app.vault.on("create", (f) => {
