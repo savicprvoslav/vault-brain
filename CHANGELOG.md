@@ -30,4 +30,4 @@ First public release — fully-local, multimodal AI for Obsidian via **Gemma 4**
 - Desktop Obsidian 1.5.0+, [Ollama](https://ollama.com) 0.30.5+, `gemma4:12b` (+ `nomic-embed-text`
   for whole-vault search).
 
-[0.1.0]: https://github.com/savicprvoslav/vault-brain/releases/tag/v0.1.0
+[0.1.0]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.0
