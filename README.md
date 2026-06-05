@@ -1,8 +1,12 @@
 # Vault Brain
 
+[![CI](https://github.com/savicprvoslav/vault-brain/actions/workflows/ci.yml/badge.svg)](https://github.com/savicprvoslav/vault-brain/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) ![Platform: desktop](https://img.shields.io/badge/platform-desktop-blue) ![100% local](https://img.shields.io/badge/AI-100%25%20local-brightgreen) ![Gemma 4 + Ollama](https://img.shields.io/badge/Gemma%204-Ollama-orange)
+
 **Fully-local, multimodal AI for Obsidian.** Talk to your vault, snap images into notes, search across everything semantically, and write with AI — all powered by **Gemma 4** on **Ollama**. No cloud. No API keys. **Zero data leaves your machine.**
 
 > Every AI feature runs against a local Ollama endpoint on `127.0.0.1`. There is exactly **one** network call site in the entire codebase ([`src/core/ollama-provider.ts`](src/core/ollama-provider.ts)) and it only ever talks to your configured localhost endpoint. See [Privacy & network audit](#privacy--network-audit).
+
+**Contents:** [Features](#features) · [Requirements](#requirements) · [Setup](#setup) · [Commands](#commands) · [Settings](#settings) · [Privacy](#privacy--network-audit) · [Development](#development) · [License](#license)
 
 ---
 

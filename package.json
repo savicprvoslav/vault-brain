@@ -3,12 +3,32 @@
   "version": "0.1.0",
   "description": "Fully-local multimodal AI for Obsidian via Gemma 4 on Ollama.",
   "type": "module",
+  "keywords": [
+    "obsidian",
+    "obsidian-plugin",
+    "ollama",
+    "gemma",
+    "local-ai",
+    "rag",
+    "multimodal",
+    "voice",
+    "ocr",
+    "privacy"
+  ],
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit --skipLibCheck && node esbuild.config.mjs production",
     "test": "node --import tsx --test tests/*.test.ts"
   },
-  "author": "Prvoslav",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/savicprvoslav/vault-brain.git"
+  },
+  "bugs": {
+    "url": "https://github.com/savicprvoslav/vault-brain/issues"
+  },
+  "homepage": "https://github.com/savicprvoslav/vault-brain#readme",
+  "author": "Prvoslav Savić (https://github.com/savicprvoslav)",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^24.0.0",
