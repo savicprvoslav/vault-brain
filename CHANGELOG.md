@@ -4,6 +4,12 @@ All notable changes to Vault Brain are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] — 2026-06-05
+
+### Changed
+- Releases are now built and signed in GitHub Actions with **build-provenance attestations**, so the
+  published `main.js` and `styles.css` can be cryptographically verified against this source repository.
+
 ## [0.1.1] — 2026-06-05
 
 ### Fixed
@@ -39,5 +45,6 @@ First public release — fully-local, multimodal AI for Obsidian via **Gemma 4**
 - Desktop Obsidian 1.5.0+, [Ollama](https://ollama.com) 0.30.5+, `gemma4:12b` (+ `nomic-embed-text`
   for whole-vault search).
 
+[0.1.2]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.2
 [0.1.1]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.1
 [0.1.0]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.0
