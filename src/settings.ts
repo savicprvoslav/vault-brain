@@ -52,16 +52,25 @@ export class VaultBrainSettingTab extends PluginSettingTab {
         try {
           models = await this.plugin.provider.listModels();
         } catch {
-          /* Ollama offline — fall back to the saved value */
-        }
-        if (this.plugin.settings.model && !models.includes(this.plugin.settings.model)) {
-          models.unshift(this.plugin.settings.model);
+          /* Ollama offline */
         }
         if (models.length === 0) {
-          models = [this.plugin.settings.model || "gemma4:latest"];
+          // Can't reach Ollama — keep the saved value selectable so it isn't lost.
+          const saved = this.plugin.settings.model || "gemma4:latest";
+          d.addOption(saved, saved);
+          d.setValue(saved);
+        } else {
+          for (const m of models) d.addOption(m, m);
+          if (models.includes(this.plugin.settings.model)) {
+            d.setValue(this.plugin.settings.model);
+          } else {
+            // Saved model is no longer installed — heal to an installed chat model.
+            const fallback = models.find((m) => m.startsWith("gemma4:")) ?? models[0];
+            d.setValue(fallback);
+            this.plugin.settings.model = fallback;
+            await save();
+          }
         }
-        for (const m of models) d.addOption(m, m);
-        d.setValue(this.plugin.settings.model);
         d.onChange(async (v) => {
           this.plugin.settings.model = v;
           await save();
