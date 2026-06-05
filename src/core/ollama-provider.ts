@@ -65,15 +65,17 @@ export interface OllamaConfig {
   port: number; // e.g. 11434
   model: string; // e.g. "gemma4:12b"
   requestTimeoutMs?: number; // listModels/showCapabilities (default 8000)
-  idleTimeoutMs?: number; // abort a stream only after this long with NO new tokens (default 120000)
+  chatTimeoutMs?: number; // wall-clock cap for a streaming chat (default 300000)
 }
 
 export class OllamaProvider implements LlmProvider {
-  // fetchFn is injectable for testing. The default wraps the global fetch unbound,
-  // which works in both Node tests and the Obsidian renderer and avoids Chromium's
-  // "Illegal invocation" error that occurs when fetch is called as a method of
-  // another object (e.g. `this.fetchFn(...)`). Do NOT use window/globalThis here —
-  // this file must stay Node-pure for unit testing.
+  // We intentionally use the web-standard `fetch` here, NOT Obsidian's requestUrl:
+  // chatStream/pullModel need true streaming (token-by-token SSE, including the model's
+  // "thinking" phase) which requestUrl cannot do, and `fetch` keeps this transport
+  // unit-testable in plain Node. The endpoint is localhost-only so CORS is a non-issue
+  // (Ollama allows the app://obsidian.md origin). fetchFn is injectable for testing; the
+  // default wraps the global fetch unbound to avoid Chromium's "Illegal invocation" when
+  // it is called as `this.fetchFn(...)`. Do NOT use window/globalThis here — keep Node-pure.
   constructor(
     private cfg: OllamaConfig,
     private fetchFn: typeof fetch = (...args: Parameters<typeof fetch>) => fetch(...args),
@@ -84,69 +86,54 @@ export class OllamaProvider implements LlmProvider {
   }
 
   async chatStream(messages: ChatMessage[], opts: ChatStreamOpts): Promise<string> {
-    // Abort only after idleMs with NO new bytes. This keeps long "thinking" responses
-    // (gemma4:12b streams a chain-of-thought before the answer) alive as long as tokens
-    // keep flowing, while still catching a genuine hang. The clock is reset on every read.
-    const idleMs = this.cfg.idleTimeoutMs ?? 120000;
-    const idle = new AbortController();
-    let idleTimer: ReturnType<typeof setTimeout> | undefined;
-    const armIdle = () => {
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(
-        () => idle.abort(new DOMException("Ollama stopped responding (idle timeout)", "TimeoutError")),
-        idleMs,
-      );
-    };
+    // Generous wall-clock cap: gemma4:12b streams a chain-of-thought (reasoning) before
+    // the answer, so this must cover a full think + answer; callers may also pass their own
+    // opts.signal. AbortSignal.timeout (not setTimeout) keeps this file free of window/timer
+    // globals and Node-testable.
     // AbortSignal.any is available in Node 18.17+/browsers but not typed in TS 5.4's DOM lib.
     const signal = (AbortSignal as typeof AbortSignal & { any(signals: AbortSignal[]): AbortSignal }).any([
       opts.signal,
-      idle.signal,
+      AbortSignal.timeout(this.cfg.chatTimeoutMs ?? 300000),
     ]);
-    armIdle();
-    try {
-      const res = await this.fetchFn(`${this.base()}/v1/chat/completions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildChatRequest(this.cfg.model, messages, true)),
-        signal,
-      });
-      if (!res.ok || !res.body) {
-        throw new Error(`Ollama returned HTTP ${res.status}`);
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let full = "";
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        armIdle(); // new bytes → reset the idle clock
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          const delta = parseSseDelta(line);
-          if (delta === null) return full; // [DONE]
-          if (delta.reasoning) opts.onThinking?.(delta.reasoning);
-          if (delta.content) {
-            full += delta.content;
-            opts.onToken(delta.content);
-          }
-        }
-      }
-      // Flush a complete-but-unterminated final line (stream ended without [DONE]).
-      const tail = parseSseDelta(buffer);
-      if (tail) {
-        if (tail.reasoning) opts.onThinking?.(tail.reasoning);
-        if (tail.content) {
-          full += tail.content;
-          opts.onToken(tail.content);
-        }
-      }
-      return full;
-    } finally {
-      if (idleTimer) clearTimeout(idleTimer);
+    const res = await this.fetchFn(`${this.base()}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(buildChatRequest(this.cfg.model, messages, true)),
+      signal,
+    });
+    if (!res.ok || !res.body) {
+      throw new Error(`Ollama returned HTTP ${res.status}`);
     }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let full = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const delta = parseSseDelta(line);
+        if (delta === null) return full; // [DONE]
+        if (delta.reasoning) opts.onThinking?.(delta.reasoning);
+        if (delta.content) {
+          full += delta.content;
+          opts.onToken(delta.content);
+        }
+      }
+    }
+    // Flush a complete-but-unterminated final line (stream ended without [DONE]).
+    const tail = parseSseDelta(buffer);
+    if (tail) {
+      if (tail.reasoning) opts.onThinking?.(tail.reasoning);
+      if (tail.content) {
+        full += tail.content;
+        opts.onToken(tail.content);
+      }
+    }
+    return full;
   }
 
   async listModels(): Promise<string[]> {

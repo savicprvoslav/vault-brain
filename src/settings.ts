@@ -124,7 +124,9 @@ export class VaultBrainSettingTab extends PluginSettingTab {
             const devices = await navigator.mediaDevices.enumerateDevices();
             devices
               .filter((dev) => dev.kind === "audioinput")
-              .forEach((dev, i) => d.addOption(dev.deviceId, dev.label || `Microphone ${i + 1}`));
+              .forEach((dev, i) => {
+                d.addOption(dev.deviceId, dev.label || `Microphone ${i + 1}`);
+              });
           } catch {
             /* enumeration may fail before permission is granted */
           }
