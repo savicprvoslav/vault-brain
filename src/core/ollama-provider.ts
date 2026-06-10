@@ -60,10 +60,20 @@ export function parseSseLine(line: string): string | null {
   return d === null ? null : d.content;
 }
 
+// Pure: resolve the request base URL. A host that already carries a path (e.g. an Open WebUI
+// Ollama proxy: https://llm.example.net/ollama) or an explicit port is used as-is — appending
+// :port would corrupt it. Plain hosts get :port appended.
+export function baseUrl(host: string, port: number): string {
+  const h = host.trim().replace(/\/+$/, "");
+  if (/^https?:\/\/[^/]+\//.test(h) || /:\d+$/.test(h)) return h;
+  return `${h}:${port}`;
+}
+
 export interface OllamaConfig {
-  host: string; // e.g. "http://127.0.0.1"
-  port: number; // e.g. 11434
+  host: string; // e.g. "http://127.0.0.1" or "https://llm.example.net/ollama"
+  port: number; // e.g. 11434 (ignored when host carries a path or port)
   model: string; // e.g. "gemma4:12b"
+  apiToken?: string; // optional — sent as "Authorization: Bearer …" (remote servers / proxies)
   requestTimeoutMs?: number; // listModels/showCapabilities (default 8000)
   chatTimeoutMs?: number; // wall-clock cap for a streaming chat (default 300000)
 }
@@ -82,7 +92,14 @@ export class OllamaProvider implements LlmProvider {
   ) {}
 
   private base(): string {
-    return `${this.cfg.host}:${this.cfg.port}`;
+    return baseUrl(this.cfg.host, this.cfg.port);
+  }
+
+  private headers(json = true): Record<string, string> {
+    const h: Record<string, string> = {};
+    if (json) h["Content-Type"] = "application/json";
+    if (this.cfg.apiToken) h["Authorization"] = `Bearer ${this.cfg.apiToken}`;
+    return h;
   }
 
   async chatStream(messages: ChatMessage[], opts: ChatStreamOpts): Promise<string> {
@@ -97,7 +114,7 @@ export class OllamaProvider implements LlmProvider {
     ]);
     const res = await this.fetchFn(`${this.base()}/v1/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers(),
       body: JSON.stringify(buildChatRequest(this.cfg.model, messages, true)),
       signal,
     });
@@ -140,7 +157,7 @@ export class OllamaProvider implements LlmProvider {
   async keepWarm(): Promise<void> {
     const res = await this.fetchFn(`${this.base()}/api/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers(),
       body: JSON.stringify({ model: this.cfg.model, prompt: "", keep_alive: "10m" }),
       signal: AbortSignal.timeout(this.cfg.requestTimeoutMs ?? 8000),
     });
@@ -150,6 +167,7 @@ export class OllamaProvider implements LlmProvider {
   async listModels(): Promise<string[]> {
     const res = await this.fetchFn(`${this.base()}/api/tags`, {
       method: "GET",
+      headers: this.headers(false),
       signal: AbortSignal.timeout(this.cfg.requestTimeoutMs ?? 8000),
     });
     if (!res.ok) throw new Error(`Ollama returned HTTP ${res.status}`);
@@ -160,7 +178,7 @@ export class OllamaProvider implements LlmProvider {
   async showCapabilities(model: string): Promise<string[]> {
     const res = await this.fetchFn(`${this.base()}/api/show`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers(),
       body: JSON.stringify({ model }),
       signal: AbortSignal.timeout(this.cfg.requestTimeoutMs ?? 8000),
     });
@@ -172,7 +190,7 @@ export class OllamaProvider implements LlmProvider {
   async embed(model: string, texts: string[]): Promise<number[][]> {
     const res = await this.fetchFn(`${this.base()}/api/embed`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers(),
       body: JSON.stringify({ model, input: texts }),
       signal: AbortSignal.timeout(60000),
     });
@@ -184,7 +202,7 @@ export class OllamaProvider implements LlmProvider {
   async pullModel(model: string, onProgress: (status: string, pct: number) => void): Promise<void> {
     const res = await this.fetchFn(`${this.base()}/api/pull`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: this.headers(),
       body: JSON.stringify({ model, stream: true }),
     });
     if (!res.ok || !res.body) throw new Error(`Ollama returned HTTP ${res.status}`);

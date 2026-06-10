@@ -4,6 +4,19 @@ All notable changes to Vault Brain are documented in this file. The format is ba
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] — 2026-06-10
+
+### Added
+- **Remote servers & API tokens.** A new optional **API token** setting is sent as
+  `Authorization: Bearer …` on every request, and the host setting now accepts URLs that carry a
+  path (e.g. an Open WebUI Ollama proxy: `https://your-host/ollama` — the port is ignored in that
+  case). Run the models on a home server or DGX-class box and use Obsidian from a light laptop —
+  see "Remote server (advanced)" in the README. Validated end-to-end against a live Open WebUI
+  deployment (Bearer auth + CORS for Obsidian's origin).
+- Privacy unchanged by default (loopback), and still a **single auditable network egress**; pointing
+  the plugin at a remote host sends note content to that machine — the settings and README say so
+  explicitly. The token is stored unencrypted in the vault's plugin data.
+
 ## [0.1.3] — 2026-06-10
 
 Stability patch — fixes from a full code review of the feature layer.
@@ -72,6 +85,7 @@ First public release — fully-local, multimodal AI for Obsidian via **Gemma 4**
 - Desktop Obsidian 1.5.0+, [Ollama](https://ollama.com) 0.30.5+, `gemma4:12b` (+ `nomic-embed-text`
   for whole-vault search).
 
+[0.1.4]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.4
 [0.1.3]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.3
 [0.1.2]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.2
 [0.1.1]: https://github.com/savicprvoslav/vault-brain/releases/tag/0.1.1

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { partToOpenAi, buildChatRequest, parseSseLine, parseSseDelta, OllamaProvider } from "../src/core/ollama-provider.ts";
+import { partToOpenAi, buildChatRequest, parseSseLine, parseSseDelta, baseUrl, OllamaProvider } from "../src/core/ollama-provider.ts";
 
 test("partToOpenAi maps text", () => {
   assert.deepEqual(partToOpenAi({ type: "text", text: "hi" }), { type: "text", text: "hi" });
@@ -146,4 +146,33 @@ test("chatStream routes reasoning to onThinking, content to onToken, returns onl
   assert.equal(out, "Hello world");
   assert.deepEqual(toks, ["Hello", " world"]);
   assert.deepEqual(think, ["Let me ", "think"]);
+});
+
+test("baseUrl appends the port to plain hosts", () => {
+  assert.equal(baseUrl("http://127.0.0.1", 11434), "http://127.0.0.1:11434");
+});
+
+test("baseUrl keeps path-suffixed hosts as-is (Open WebUI /ollama proxy)", () => {
+  assert.equal(baseUrl("https://llm.example.net/ollama", 11434), "https://llm.example.net/ollama");
+  assert.equal(baseUrl("https://llm.example.net/ollama/", 11434), "https://llm.example.net/ollama");
+});
+
+test("baseUrl keeps hosts with an explicit port as-is", () => {
+  assert.equal(baseUrl("http://192.168.1.5:8080", 11434), "http://192.168.1.5:8080");
+});
+
+test("requests carry Authorization: Bearer when apiToken is set, and none when empty", async () => {
+  let captured: RequestInit | undefined;
+  const fakeFetch = (async (_url: unknown, init?: RequestInit) => {
+    captured = init;
+    return new Response(JSON.stringify({ models: [] }), { status: 200 });
+  }) as unknown as typeof fetch;
+
+  const withToken = new OllamaProvider({ host: "http://x", port: 1, model: "m", apiToken: "sk-test" }, fakeFetch);
+  await withToken.listModels();
+  assert.equal((captured?.headers as Record<string, string>).Authorization, "Bearer sk-test");
+
+  const noToken = new OllamaProvider({ host: "http://x", port: 1, model: "m" }, fakeFetch);
+  await noToken.listModels();
+  assert.equal((captured?.headers as Record<string, string>).Authorization, undefined);
 });

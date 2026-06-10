@@ -1,6 +1,7 @@
 export interface VaultBrainSettings {
   host: string;
   port: number;
+  apiToken: string;
   model: string;
   outputTemplate: string;
   dailyNoteMode: "append" | "new";
@@ -30,6 +31,7 @@ export const DEFAULT_TEMPLATE = `## 🎙️ Voice memo — {{date}}
 export const DEFAULT_SETTINGS: VaultBrainSettings = {
   host: "http://127.0.0.1",
   port: 11434,
+  apiToken: "",
   model: "gemma4:12b",
   outputTemplate: DEFAULT_TEMPLATE,
   dailyNoteMode: "append",
@@ -60,6 +62,7 @@ export function normalizeSettings(raw: unknown): VaultBrainSettings {
   if (s.outputLanguage !== "auto" && s.outputLanguage !== "en" && s.outputLanguage !== "sr")
     s.outputLanguage = DEFAULT_SETTINGS.outputLanguage;
   if (typeof s.host !== "string" || s.host.trim() === "") s.host = DEFAULT_SETTINGS.host;
+  s.apiToken = typeof s.apiToken === "string" ? s.apiToken.trim() : "";
   if (typeof s.model !== "string" || s.model.trim() === "") s.model = DEFAULT_SETTINGS.model;
   if (typeof s.outputTemplate !== "string") s.outputTemplate = DEFAULT_SETTINGS.outputTemplate;
   s.keepAlive = Boolean(s.keepAlive);

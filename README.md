@@ -65,6 +65,23 @@ Answers render as Markdown with clickable `[[links]]`, a copy button, and modern
 
 > **About the model:** `gemma4:12b` is the recommended build — it's **fully multimodal** (audio + vision + text), so voice, image OCR, and chat all run on one model. It needs **Ollama 0.30.5+** (older versions return a `412` when pulling it). Want something lighter? The 8B **`gemma4:latest`** is also fully multimodal and faster (just less capable) — pick it in Settings → Vault Brain → **Model**. Avoid **`gemma4:12b-mlx`**: that MLX build is **text-only** (no voice or vision).
 
+### Remote server (advanced)
+
+Vault Brain can also talk to Ollama running on **another machine you own** — a home server or a
+DGX-class box — so a light laptop can use a heavy model:
+
+- **Bare Ollama on your LAN** — set *Ollama host* to `http://192.168.x.y` (keep the port). Recent
+  Ollama allows Obsidian's origin by default; if you hit a CORS error, start the server with
+  `OLLAMA_ORIGINS="app://obsidian.md"`.
+- **Open WebUI** (fronts Ollama with API keys) — set *Ollama host* to `https://your-host/ollama`
+  (Open WebUI's Ollama proxy path; the port setting is ignored when the host has a path) and paste
+  an API key from Open WebUI → Settings → Account into the **API token** setting. The token is sent
+  as `Authorization: Bearer …` on every request.
+
+> **Privacy:** pointing the plugin at a remote server sends your note content to that machine — only
+> use hardware you trust. The token is stored unencrypted in
+> `.obsidian/plugins/vault-brain/data.json`. The single auditable network egress is unchanged.
+
 ## Commands
 
 Voice memo → note · Start/Stop voice recording · Process as meeting · Extract text from image · Open Q&A panel · Open related notes · Rebuild vault index · Selection: Summarize/Improve/Format/Translate/Fix grammar (+ your custom prompts) · Continue writing at cursor · Suggest tags for this note · Link mentions of existing notes · Test connection.

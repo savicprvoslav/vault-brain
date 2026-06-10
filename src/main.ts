@@ -183,6 +183,7 @@ export default class VaultBrainPlugin extends Plugin {
       host: this.settings.host,
       port: this.settings.port,
       model: this.settings.model,
+      apiToken: this.settings.apiToken,
     });
   }
 

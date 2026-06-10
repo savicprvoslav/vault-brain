@@ -20,7 +20,7 @@ export class VaultBrainSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Ollama host")
-      .setDesc("Local endpoint only. Defaults to loopback for privacy.")
+      .setDesc("Defaults to loopback for privacy. A remote server also works (e.g. an Open WebUI proxy: https://host/ollama — the port is ignored when the host has a path), but your notes are sent there, so only use a machine you trust.")
       .addText((t) =>
         t.setValue(this.plugin.settings.host).onChange(async (v) => {
           const host = v.trim();
@@ -41,6 +41,19 @@ export class VaultBrainSettingTab extends PluginSettingTab {
         }
       })
     );
+
+    new Setting(containerEl)
+      .setName("API token")
+      .setDesc("Optional — sent as 'Authorization: Bearer …'. Needed for remote servers with auth (Open WebUI, vLLM, reverse proxies). Stored unencrypted in this vault's plugin data.")
+      .addText((t) => {
+        t.inputEl.type = "password";
+        t.setPlaceholder("sk-…")
+          .setValue(this.plugin.settings.apiToken)
+          .onChange(async (v) => {
+            this.plugin.settings.apiToken = v.trim();
+            await save();
+          });
+      });
 
     new Setting(containerEl)
       .setName("Model")
