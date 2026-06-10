@@ -10,6 +10,7 @@ function stub(over: Partial<LlmProvider>): LlmProvider {
     showCapabilities: async () => [],
     embed: async () => [],
     pullModel: async () => {},
+    keepWarm: async () => {},
     ...over,
   };
 }

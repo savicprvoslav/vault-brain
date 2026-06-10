@@ -25,11 +25,18 @@ export class VaultIndex {
   }
 
   async load(): Promise<void> {
+    const adapter = this.plugin.app.vault.adapter;
     try {
-      const raw = await this.plugin.app.vault.adapter.read(this.indexPath());
+      const raw = await adapter.read(this.indexPath());
       this.data = JSON.parse(raw) as Record<string, IndexedNote>;
     } catch {
-      this.data = {};
+      // A crash between save()'s remove and rename leaves only the .tmp — try it.
+      try {
+        const raw = await adapter.read(this.indexPath() + ".tmp");
+        this.data = JSON.parse(raw) as Record<string, IndexedNote>;
+      } catch {
+        this.data = {};
+      }
     }
   }
 
@@ -38,31 +45,41 @@ export class VaultIndex {
     this.saveTimer = window.setTimeout(() => void this.save(), 1500);
   }
 
+  // Atomic: write to .tmp, then swap — a crash mid-save never truncates the live index.
   async save(): Promise<void> {
-    await this.plugin.app.vault.adapter.write(this.indexPath(), JSON.stringify(this.data));
+    const adapter = this.plugin.app.vault.adapter;
+    const tmpPath = this.indexPath() + ".tmp";
+    await adapter.write(tmpPath, JSON.stringify(this.data));
+    if (await adapter.exists(this.indexPath())) await adapter.remove(this.indexPath());
+    await adapter.rename(tmpPath, this.indexPath());
   }
 
-  async updateFile(file: TFile): Promise<void> {
+  // Embed one file into `map`. Returns false on read/embed failure (entry left untouched).
+  private async embedInto(map: Record<string, IndexedNote>, file: TFile): Promise<boolean> {
     try {
       const text = await this.plugin.app.vault.cachedRead(file);
       const chunks = chunkNote(text);
       if (chunks.length === 0) {
-        delete this.data[file.path];
-        this.scheduleSave();
-        return;
+        delete map[file.path];
+        return true;
       }
       const vectors = await this.plugin.provider.embed(this.plugin.settings.embedModel, chunks);
       if (vectors.length < chunks.length || vectors.some((v) => v.length === 0)) {
-        return; // soft embed failure — keep the prior entry, don't poison the index
+        return false; // soft embed failure — keep the prior entry, don't poison the index
       }
-      this.data[file.path] = {
+      map[file.path] = {
         mtime: file.stat.mtime,
         chunks: chunks.map((t, i) => ({ text: t, vector: vectors[i] })),
       };
-      this.scheduleSave();
+      return true;
     } catch {
-      // read/embed failed (e.g. Ollama down) — retain prior entry, no unhandled rejection
+      return false; // read/embed failed (e.g. Ollama down) — retain prior entry, no unhandled rejection
     }
+  }
+
+  async updateFile(file: TFile): Promise<void> {
+    if (this.data[file.path]?.mtime === file.stat.mtime) return; // unchanged — skip re-embed
+    if (await this.embedInto(this.data, file)) this.scheduleSave();
   }
 
   removeFile(path: string): void {
@@ -93,13 +110,23 @@ export class VaultIndex {
     });
   }
 
-  async reindexAll(): Promise<number> {
+  // Rebuild into a fresh map — this.data is only replaced once the rebuild succeeds.
+  async reindexAll(): Promise<{ indexed: number; failed: number }> {
     return this.plugin.activity.run("Indexing vault", async () => {
-      this.data = {};
+      const fresh: Record<string, IndexedNote> = {};
       const files = this.plugin.app.vault.getMarkdownFiles();
-      for (const f of files) await this.updateFile(f);
+      let indexed = 0;
+      let failed = 0;
+      for (const f of files) {
+        if (await this.embedInto(fresh, f)) indexed++;
+        else failed++;
+        if (failed === 3 && indexed === 0) {
+          throw new Error("indexing aborted — Ollama embedding failed (is nomic-embed-text installed?)");
+        }
+      }
+      this.data = fresh;
       await this.save();
-      return files.length;
+      return { indexed, failed };
     });
   }
 

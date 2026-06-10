@@ -70,18 +70,22 @@ export default class VaultBrainPlugin extends Plugin {
     registerOnboarding(this);
     registerPdfCommand(this);
 
-    this.registerEvent(
-      this.app.vault.on("create", (f) => {
-        const wf = this.settings.watchFolder.trim().replace(/\/$/, "");
-        if (!wf || !(f instanceof TFile)) return;
-        if (!AUDIO_EXTS.includes(f.extension.toLowerCase())) return;
-        if (f.path !== wf && !f.path.startsWith(wf + "/")) return;
-        void this.processWhenStable(f);
-      })
-    );
-
     this.vaultIndex = new VaultIndex(this);
     this.app.workspace.onLayoutReady(() => {
+      // vault.on("create") fires once per existing file during initial vault load —
+      // register create handlers only after layout-ready to avoid a startup storm.
+      this.registerEvent(
+        this.app.vault.on("create", (f) => {
+          const wf = this.settings.watchFolder.trim().replace(/\/$/, "");
+          if (!wf || !(f instanceof TFile)) return;
+          if (!AUDIO_EXTS.includes(f.extension.toLowerCase())) return;
+          if (f.path !== wf && !f.path.startsWith(wf + "/")) return;
+          void this.processWhenStable(f);
+        })
+      );
+      this.registerEvent(this.app.vault.on("create", (f) => {
+        if (f instanceof TFile && f.extension === "md") void this.vaultIndex.updateFile(f);
+      }));
       void (async () => {
         await this.vaultIndex.load();
         await this.vaultIndex.reconcile();
@@ -92,9 +96,6 @@ export default class VaultBrainPlugin extends Plugin {
     });
     this.registerEvent(this.app.vault.on("modify", (f) => {
       if (f instanceof TFile && f.extension === "md") this.debouncedIndex(f);
-    }));
-    this.registerEvent(this.app.vault.on("create", (f) => {
-      if (f instanceof TFile && f.extension === "md") void this.vaultIndex.updateFile(f);
     }));
     this.registerEvent(this.app.vault.on("delete", (f) => this.vaultIndex.removeFile(f.path)));
     this.registerEvent(this.app.vault.on("rename", (f, oldPath) => {
@@ -107,9 +108,9 @@ export default class VaultBrainPlugin extends Plugin {
       callback: async () => {
         const n = new Notice("Vault Brain: rebuilding vault index…", 0);
         try {
-          const count = await this.vaultIndex.reindexAll();
+          const { indexed, failed } = await this.vaultIndex.reindexAll();
           n.hide();
-          new Notice(`Vault Brain: indexed ${count} notes.`);
+          new Notice(`Vault Brain: indexed ${indexed} notes${failed > 0 ? `, ${failed} failed` : ""}.`);
         } catch (e) {
           n.hide();
           new Notice("Vault Brain error: " + (e as Error).message);
@@ -146,12 +147,7 @@ export default class VaultBrainPlugin extends Plugin {
     this.registerInterval(
       window.setInterval(() => {
         if (!this.settings.keepAlive) return;
-        void this.provider
-          .chatStream([{ role: "user", parts: [{ type: "text", text: "hi" }] }], {
-            signal: AbortSignal.timeout(10000),
-            onToken: () => {},
-          })
-          .catch(() => {});
+        void this.provider.keepWarm().catch(() => {});
       }, 240000)
     );
   }

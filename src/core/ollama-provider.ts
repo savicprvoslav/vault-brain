@@ -136,6 +136,17 @@ export class OllamaProvider implements LlmProvider {
     return full;
   }
 
+  // Load/refresh the model in Ollama WITHOUT generating: empty prompt + keep_alive.
+  async keepWarm(): Promise<void> {
+    const res = await this.fetchFn(`${this.base()}/api/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: this.cfg.model, prompt: "", keep_alive: "10m" }),
+      signal: AbortSignal.timeout(this.cfg.requestTimeoutMs ?? 8000),
+    });
+    if (!res.ok) throw new Error(`Ollama returned HTTP ${res.status}`);
+  }
+
   async listModels(): Promise<string[]> {
     const res = await this.fetchFn(`${this.base()}/api/tags`, {
       method: "GET",

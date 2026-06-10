@@ -82,22 +82,40 @@ async function openAndReveal(plugin: VaultBrainPlugin, file: TFile): Promise<voi
 }
 
 interface DailyNotesOptions { format?: string; folder?: string }
-interface DailyNotesPlugin { instance?: { options?: DailyNotesOptions } }
+interface DailyNotesPlugin { enabled?: boolean; instance?: { options?: DailyNotesOptions } }
 interface AppWithInternal { internalPlugins?: { getPluginById(id: string): DailyNotesPlugin | undefined } }
+
+// Create any missing ancestor folders of `path` (daily-note formats may contain "/").
+async function ensureFolders(plugin: VaultBrainPlugin, path: string): Promise<void> {
+  const parts = path.split("/").slice(0, -1);
+  let dir = "";
+  for (const p of parts) {
+    dir = dir ? `${dir}/${p}` : p;
+    if (plugin.app.vault.getAbstractFileByPath(dir)) continue;
+    try {
+      await plugin.app.vault.createFolder(dir);
+    } catch {
+      // "already exists" race — ignore
+    }
+  }
+}
 
 async function resolveDailyNote(plugin: VaultBrainPlugin): Promise<TFile> {
   const dn = (plugin.app as unknown as AppWithInternal).internalPlugins?.getPluginById("daily-notes");
-  const format: string = dn?.instance?.options?.format || "YYYY-MM-DD";
-  const folder: string = (dn?.instance?.options?.folder || "").trim();
+  const opts = dn?.enabled ? dn.instance?.options : undefined; // disabled plugin → default format/root
+  const format: string = opts?.format || "YYYY-MM-DD";
+  const folder: string = (opts?.folder || "").trim();
   const name = now().format(format);
   const path = folder ? `${folder}/${name}.md` : `${name}.md`;
   const existing = plugin.app.vault.getAbstractFileByPath(path);
   if (existing instanceof TFile) return existing;
+  await ensureFolders(plugin, path);
   return plugin.app.vault.create(path, "");
 }
 
 export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBuffer, title: string, kind: "memo" | "meeting" = "memo"): Promise<void> {
   const notice = new Notice(`Vault Brain: processing ${title}…`, 0);
+  let filled: string;
   try {
     const wav = await toWav16kMono(bytes);
     const messages = kind === "meeting" ? buildMeetingMessages(bytesToBase64(wav)) : buildVoiceMessages(bytesToBase64(wav));
@@ -109,14 +127,22 @@ export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBu
       })
     );
     const sections = parseVoiceOutput(out);
-    const filled = render(plugin.settings.outputTemplate, {
+    filled = render(plugin.settings.outputTemplate, {
       date: now().format("YYYY-MM-DD"),
       title,
       summary: sections.summary,
       tasks: sections.tasks,
       transcript: sections.transcript,
     });
-    let target: TFile;
+  } catch (e) {
+    notice.hide();
+    new Notice("Vault Brain error: " + (e as Error).message);
+    return;
+  }
+  // From here the rendered memo exists — never discard it on a write failure.
+  let target: TFile;
+  let done: string;
+  try {
     if (plugin.settings.dailyNoteMode === "new") {
       const path = `${title} (memo).md`;
       const existing = plugin.app.vault.getAbstractFileByPath(path);
@@ -126,13 +152,25 @@ export async function processAudioBytes(plugin: VaultBrainPlugin, bytes: ArrayBu
       target = await resolveDailyNote(plugin);
       await plugin.app.vault.append(target, `\n${filled}\n`);
     }
-    await openAndReveal(plugin, target);
-    notice.hide();
-    new Notice(`Vault Brain: memo added to "${target.basename}" ✓`);
-  } catch (e) {
-    notice.hide();
-    new Notice("Vault Brain error: " + (e as Error).message);
+    done = `Vault Brain: memo added to "${target.basename}" ✓`;
+  } catch {
+    try {
+      target = await plugin.app.vault.create(`Voice memo ${now().format("YYYY-MM-DD HHmm")}.md`, `${filled}\n`);
+      done = `Vault Brain: couldn't write the target note — memo saved to "${target.basename}".`;
+    } catch (e2) {
+      notice.hide();
+      new Notice(`Vault Brain error: couldn't save the memo (${(e2 as Error).message}) — transcript logged to the developer console.`);
+      console.error(`Vault Brain: unsaved voice memo "${title}":\n${filled}`);
+      return;
+    }
   }
+  try {
+    await openAndReveal(plugin, target);
+  } catch {
+    // note is saved — revealing it is best-effort
+  }
+  notice.hide();
+  new Notice(done);
 }
 
 export async function processAudioFile(plugin: VaultBrainPlugin, file: TFile, kind: "memo" | "meeting" = "memo"): Promise<void> {

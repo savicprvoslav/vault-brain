@@ -97,6 +97,24 @@ test("chatStream throws on non-OK response", async () => {
   );
 });
 
+test("keepWarm posts empty prompt with keep_alive to /api/generate", async () => {
+  let captured: { url: string; init: RequestInit } | null = null;
+  const fakeFetch = (async (url: RequestInfo | URL, init?: RequestInit) => {
+    captured = { url: String(url), init: init ?? {} };
+    return new Response("{}", { status: 200 });
+  }) as unknown as typeof fetch;
+  const p = new OllamaProvider({ host: "http://x", port: 1, model: "m" }, fakeFetch);
+  await p.keepWarm();
+  assert.ok(captured!.url.endsWith("/api/generate"));
+  assert.deepEqual(JSON.parse(String(captured!.init.body)), { model: "m", prompt: "", keep_alive: "10m" });
+});
+
+test("keepWarm throws on non-OK response", async () => {
+  const fakeFetch = (async () => new Response("nope", { status: 500 })) as unknown as typeof fetch;
+  const p = new OllamaProvider({ host: "http://x", port: 1, model: "m" }, fakeFetch);
+  await assert.rejects(() => p.keepWarm(), /HTTP 500/);
+});
+
 test("parseSseDelta separates reasoning from content", () => {
   assert.deepEqual(
     parseSseDelta('data: {"choices":[{"delta":{"content":"","reasoning":"think"}}]}'),

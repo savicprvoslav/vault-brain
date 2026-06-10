@@ -209,29 +209,37 @@ export class VaultBrainQaView extends ItemView {
     let sources: string[] = [];
     let truncated = false;
 
-    if (this.mode === "vault") {
-      const hits = await this.plugin.vaultIndex.search(question, this.plugin.settings.ragTopK);
-      const ctx = assembleRagContext(hits, cap);
-      contextText = ctx.text;
-      sources = ctx.sources;
-      truncated = ctx.truncated;
-      if (!contextText) {
-        this.addBubble("assistant", 'No indexed notes matched. If your vault has notes, run “Rebuild vault index”.');
-        return;
+    try {
+      if (this.mode === "vault") {
+        const hits = await this.plugin.vaultIndex.search(question, this.plugin.settings.ragTopK);
+        const ctx = assembleRagContext(hits, cap);
+        contextText = ctx.text;
+        sources = ctx.sources;
+        truncated = ctx.truncated;
+        if (!contextText) {
+          this.addBubble("assistant", 'No indexed notes matched. If your vault has notes, run “Rebuild vault index”.');
+          return;
+        }
+      } else {
+        const activeFile = this.app.workspace.getActiveFile();
+        if (!(activeFile instanceof TFile)) return;
+        const file = activeFile;
+        const { active, linked } = await this.gatherNotes(file);
+        const extra: NoteDoc[] = [];
+        for (const f of this.manualContext) {
+          if (f.path === file.path) continue;
+          extra.push({ title: f.basename, body: await this.app.vault.cachedRead(f) });
+        }
+        const ctx = assembleContext(active, [...linked, ...extra], cap);
+        contextText = ctx.text;
+        truncated = ctx.truncated;
       }
-    } else {
-      const activeFile = this.app.workspace.getActiveFile();
-      if (!(activeFile instanceof TFile)) return;
-      const file = activeFile;
-      const { active, linked } = await this.gatherNotes(file);
-      const extra: NoteDoc[] = [];
-      for (const f of this.manualContext) {
-        if (f.path === file.path) continue;
-        extra.push({ title: f.basename, body: await this.app.vault.cachedRead(f) });
-      }
-      const ctx = assembleContext(active, [...linked, ...extra], cap);
-      contextText = ctx.text;
-      truncated = ctx.truncated;
+    } catch (e) {
+      // Context assembly (embedding search / note reads) failed — say so instead of dying silently.
+      this.addBubble("assistant", `⚠️ Couldn't prepare context — is Ollama running? (${(e as Error).message})`);
+      this.setStreaming(false);
+      this.abort = null;
+      return;
     }
 
     if (truncated) {

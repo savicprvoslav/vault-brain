@@ -8,6 +8,7 @@ class Recorder {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private stream: MediaStream | null = null;
+  private starting = false;
 
   state(): RecState {
     return (this.mediaRecorder?.state as RecState | undefined) ?? "inactive";
@@ -15,16 +16,26 @@ class Recorder {
   isActive(): boolean {
     return this.mediaRecorder !== null && this.mediaRecorder.state !== "inactive";
   }
+  // True while start() awaits the OS mic prompt or while recording — don't start again.
+  isBusy(): boolean {
+    return this.starting || this.isActive();
+  }
 
   async start(deviceId?: string): Promise<void> {
-    const audio: MediaStreamConstraints["audio"] = deviceId ? { deviceId: { exact: deviceId } } : true;
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio });
-    this.chunks = [];
-    this.mediaRecorder = new MediaRecorder(this.stream);
-    this.mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) this.chunks.push(e.data);
-    };
-    this.mediaRecorder.start();
+    if (this.isBusy()) throw new Error("already recording");
+    this.starting = true; // set before the await so a second click can't race getUserMedia
+    try {
+      const audio: MediaStreamConstraints["audio"] = deviceId ? { deviceId: { exact: deviceId } } : true;
+      this.stream = await navigator.mediaDevices.getUserMedia({ audio });
+      this.chunks = [];
+      this.mediaRecorder = new MediaRecorder(this.stream);
+      this.mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) this.chunks.push(e.data);
+      };
+      this.mediaRecorder.start();
+    } finally {
+      this.starting = false;
+    }
   }
 
   pause(): void {
@@ -151,7 +162,7 @@ export function registerRecorder(plugin: VaultBrainPlugin): void {
   };
 
   const startRecording = async () => {
-    if (recorder.isActive()) {
+    if (recorder.isBusy()) {
       new Notice("Vault Brain: already recording.");
       return;
     }
